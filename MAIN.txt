@@ -200,7 +200,6 @@ local function vecToStr(v) return string.format("%d_%d_%d", v.X, v.Y, v.Z) end
 local function chunkKey(x, z) return tostring(x//40).."_"..tostring(z//40) end
 
 local function isSurrounded(pos)
-task.wait()
 local directions = {
 Vector3.new(4, 0, 0), Vector3.new(-4, 0, 0),
 Vector3.new(0, 4, 0), Vector3.new(0, -4, 0),
@@ -216,7 +215,6 @@ return true
 end
 
 local function updateVisibility(pos, block)
-task.wait()
 if isSurrounded(pos) then
 block.Transparency = 1
 else
@@ -230,7 +228,6 @@ end
 end
 
 local function updateNeighbors(pos)
-task.wait()
 local directions = {
 Vector3.new(4, 0, 0), Vector3.new(-4, 0, 0),
 Vector3.new(0, 4, 0), Vector3.new(0, -4, 0),
