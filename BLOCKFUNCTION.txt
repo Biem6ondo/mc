@@ -82,6 +82,11 @@ backpack.Position = UDim2.new(0.492, 0, 0.52, 0)
 backpack.Size = UDim2.new(0.285, 0, 0.22, 0)
 backpack.BackgroundTransparency = 1
 
+local ar = Instance.new("UIAspectRatioConstraint", backpack)
+ar.AspectRatio = 9 / 3
+ar.DominantAxis = Enum.DominantAxis.Width
+ar.AspectType = Enum.AspectType.FitWithinMaxSize
+
 local uigrid = Instance.new("UIGridLayout", backpack)
 uigrid.CellSize = UDim2.new(0, 30, 0, 30)
 uigrid.CellPadding = UDim2.new(0, 7, 0, 7)
@@ -107,7 +112,7 @@ local RunService = game:GetService("RunService")
 
 local minecraft = workspace:FindFirstChild("Minecraft")
 if not minecraft then return end
-print("Module: Block Function Loaded!")
+print("Module: Block Function Loaded! 3")
 
 -- Leaf !
 
