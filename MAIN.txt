@@ -216,6 +216,7 @@ return true
 end
 
 local function updateVisibility(pos, block)
+task.wait()
 if isSurrounded(pos) then
 block.Transparency = 1
 else
