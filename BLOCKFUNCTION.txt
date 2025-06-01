@@ -7,7 +7,7 @@ local TweenService = game:GetService("TweenService")
 local folder = "TexturePack"
 local fileName = "CraftingView.png"
 local fullPath = folder .. "/" .. fileName
-local url = "https://i.postimg.cc/htnWNYvT/Photoroom-20250601-145937.png"
+local url = "https://i.postimg.cc/8krCSqp0/Photoroom-20250601-152050-1.png"
 
 if not isfolder(folder) then makefolder(folder) end
 if not isfile(fullPath) then writefile(fullPath, game:HttpGet(url)) end
