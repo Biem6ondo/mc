@@ -535,7 +535,7 @@ local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer
-local MAX_DISTANCE = 85
+local MAX_DISTANCE = 80
 local PROCESS_MIN = 1
 local PROCESS_MAX = 20
 local currentProcessRate = PROCESS_MIN
@@ -626,7 +626,7 @@ local now = tick()
 	end  
   
 	if index > #sortedBlocks then  
-		if not lastPos or (root.Position - lastPos).Magnitude >= 8 then  
+		if not lastPos or (root.Position - lastPos).Magnitude >= 2 then  
 			lastPos = root.Position  
 			scanNearbyBlocks()  
 		end  
