@@ -1,0 +1,280 @@
+print("Module: MCSFX Active Sound Loaded!")
+
+local folderName = ".MCSFX"
+if not isfolder(folderName) then makefolder(folderName) end
+
+local SoundService = game:GetService("SoundService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local SoundGroup = Instance.new("SoundGroup", SoundService)
+
+SoundGroup.Name = ".MCSFX"
+SoundGroup.Volume = 1
+
+local function notifyError(msg)
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "";
+            Text = "[Error]: " .. msg;
+            Duration = 5;
+        })
+    end)
+end
+
+local function loadSoundsParallel(partType, urlList, list)
+    for i, url in ipairs(urlList) do
+        local filename = folderName .. "/" .. partType .. "_" .. list .. "_" .. i .. ".ogg"
+        if not isfile(filename) then
+            local success, content = pcall(function() return game:HttpGet(url) end)
+            if success and content then
+                writefile(filename, content)
+            else
+                notifyError("download fail: " .. url)
+            end
+            if i % 5 == 0 then
+                task.wait()
+            end
+        end
+    end
+
+    for i, url in ipairs(urlList) do
+        local filename = folderName .. "/" .. partType .. "_" .. list .. "_" .. i .. ".ogg"
+        local success, assetId = pcall(function() return getcustomasset(filename) end)
+        if success and assetId then
+            local s = Instance.new("Sound")
+            s.SoundId = assetId
+            s.Name = filename
+            s.Volume = 1
+            s.Parent = SoundGroup
+            s.SoundGroup = SoundGroup
+            table.insert(_G[partType .. "_" .. list], s)
+        else
+            notifyError("getcustomasset fail: " .. filename)
+        end
+        if i % 5 == 0 then
+            task.wait()
+        end
+    end
+end
+
+local pack = {
+Stone = {"https://files.catbox.moe/myn1kf.ogg", "https://files.catbox.moe/sbu2lg.ogg", "https://files.catbox.moe/1m77rk.ogg", "https://files.catbox.moe/xafhdo.ogg", "https://files.catbox.moe/3co712.ogg", "https://files.catbox.moe/3anmn3.ogg"},
+_Stone = {"https://files.catbox.moe/7wcrra.ogg", "https://files.catbox.moe/ivmlma.ogg", "https://files.catbox.moe/1qv0d6.ogg", "https://files.catbox.moe/r0i4wa.ogg"},
+}
+
+local partTypes = {
+    Grass = {
+        moveUrls = {
+            "https://files.catbox.moe/om0tev.ogg",
+            "https://files.catbox.moe/meul49.ogg",
+            "https://files.catbox.moe/ogo88g.ogg",
+            "https://files.catbox.moe/jg67rk.ogg",
+            "https://files.catbox.moe/ijmxt1.ogg",
+            "https://files.catbox.moe/yozoe8.ogg"
+        },
+        breakUrls = {
+            "https://files.catbox.moe/sisoxn.ogg",
+            "https://files.catbox.moe/u10ym2.ogg",
+            "https://files.catbox.moe/u10ym2.ogg",
+            "https://files.catbox.moe/sisoxn.ogg"
+        },
+        placeUrls = {
+            "https://files.catbox.moe/sisoxn.ogg",
+            "https://files.catbox.moe/u10ym2.ogg",
+            "https://files.catbox.moe/u10ym2.ogg",
+            "https://files.catbox.moe/sisoxn.ogg"
+        }
+    },
+    Dirt = {
+        moveUrls = {
+            "https://files.catbox.moe/sonpvc.ogg",
+            "https://files.catbox.moe/sk14s0.ogg",
+            "https://files.catbox.moe/p7124f.ogg",
+            "https://files.catbox.moe/z7arjo.ogg"
+        },
+        breakUrls = {
+            "https://files.catbox.moe/w1yc5h.ogg",
+            "https://files.catbox.moe/rlfob5.ogg",
+            "https://files.catbox.moe/io2933.ogg",
+            "https://files.catbox.moe/38zp1h.ogg"
+        },
+        placeUrls = {
+            "https://files.catbox.moe/w1yc5h.ogg",
+            "https://files.catbox.moe/rlfob5.ogg",
+            "https://files.catbox.moe/io2933.ogg",
+            "https://files.catbox.moe/38zp1h.ogg"
+        }
+    },
+
+Sand = {
+moveUrls = {
+"https://files.catbox.moe/k953qy.ogg",
+"https://files.catbox.moe/rz8x7a.ogg",
+"https://files.catbox.moe/kkf7fk.ogg",
+"https://files.catbox.moe/7pjaxm.ogg"
+},
+
+breakUrls = {"https://files.catbox.moe/0pvz5s.ogg", "https://files.catbox.moe/beqj46.ogg", "https://files.catbox.moe/9giqv0.ogg", "https://files.catbox.moe/e4te8s.ogg"},
+
+placeUrls = {"https://files.catbox.moe/0pvz5s.ogg", "https://files.catbox.moe/beqj46.ogg", "https://files.catbox.moe/9giqv0.ogg", "https://files.catbox.moe/e4te8s.ogg"}
+},
+
+White_Glass = {
+placeUrls = {unpack(pack._Stone)},
+breakUrls = {"https://files.catbox.moe/8lbkbr.ogg", "https://files.catbox.moe/fpxb2v.ogg", "https://files.catbox.moe/sfhzmf.ogg"},
+moveUrls = {unpack(pack.Stone)}
+},
+
+Bedrock = {
+placeUrls = {unpack(pack._Stone)},
+breakUrls = {unpack(pack._Stone)},
+moveUrls = {unpack(pack.Stone)}
+},
+
+Block_of_Diamond = {
+placeUrls = {unpack(pack._Stone)},
+breakUrls = {unpack(pack._Stone)},
+moveUrls = {unpack(pack.Stone)}
+},
+
+Block_of_Gold = {
+placeUrls = {unpack(pack._Stone)},
+breakUrls = {unpack(pack._Stone)},
+moveUrls = {unpack(pack.Stone)}
+},
+
+Block_of_Iron = {
+placeUrls = {unpack(pack._Stone)},
+breakUrls = {unpack(pack._Stone)},
+moveUrls = {unpack(pack.Stone)}
+},
+
+Stone = {
+placeUrls = {unpack(pack._Stone)},
+breakUrls = {unpack(pack._Stone)},
+moveUrls = {unpack(pack.Stone)}
+},
+
+Cobblestone = {
+placeUrls = {unpack(pack._Stone)},
+breakUrls = {unpack(pack._Stone)},
+moveUrls = {unpack(pack.Stone)}
+},
+
+Barrier = {
+placeUrls = {unpack(pack._Stone)},
+breakUrls = {unpack(pack._Stone)},
+moveUrls = {unpack(pack.Stone)}
+},
+
+Obsidian = {
+placeUrls = {unpack(pack._Stone)},
+breakUrls = {unpack(pack._Stone)},
+moveUrls = {unpack(pack.Stone)}
+},
+}
+
+for partType, data in pairs(partTypes) do
+    _G[partType .. "_move"] = {}
+    _G[partType .. "_break"] = {}
+    _G[partType .. "_place"] = {}
+
+    loadSoundsParallel(partType, data.moveUrls, "move")
+    loadSoundsParallel(partType, data.breakUrls, "break")
+    loadSoundsParallel(partType, data.placeUrls, "place")
+end
+
+local playing = {}
+local index = {}
+
+local function playSound(partType, list)
+    local snds = _G[partType .. "_" .. list]
+    if #snds == 0 then return end
+    index[partType] = index[partType] or 1
+    local s = snds[index[partType]]
+    s:Play()
+    index[partType] = (index[partType] % #snds) + 1
+end
+
+local function playRandom(partType, list)
+    local snds = _G[partType .. "_" .. list]
+    if #snds == 0 then return end
+    local s = snds[math.random(1, #snds)]
+    s:Play()
+end
+
+local function distanceCheck(part)
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    return hrp and (hrp.Position - part.Position).Magnitude < 20
+end
+
+local function handlePart(part)
+    local partType = part.Name
+    if not partTypes[partType] then return end
+
+    part.Touched:Connect(function(hit)
+        if not hit or not hit:IsDescendantOf(LocalPlayer.Character) then return end
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp and hrp.Velocity.Magnitude > 0 and distanceCheck(part) then
+            if not playing[partType] then
+                playing[partType] = true
+                playSound(partType, "move")
+                task.delay(0.25, function() playing[partType] = false end)
+            end
+        end
+    end)
+
+    part.AncestryChanged:Connect(function(_, parent)
+        if not parent and distanceCheck(part) then
+            playRandom(partType, "break")
+        end
+    end)
+end
+
+local handledParts = {}
+
+local function onPartAdded(part)
+    if not part:IsA("BasePart") then return end
+    if handledParts[part] then return end
+    local partType = part.Name
+    if not partTypes[partType] then return end
+    handledParts[part] = true
+
+    if distanceCheck(part) then
+        playRandom(partType, "place")
+    end
+
+    handlePart(part)
+end
+
+local function init()
+    local mc = workspace:FindFirstChild("Minecraft")
+    if not mc then return end
+    for _, part in pairs(mc:GetDescendants()) do
+        onPartAdded(part)
+    end
+
+    mc.DescendantAdded:Connect(onPartAdded)
+end 
+
+init()
+
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            for _, obj in pairs(char.HumanoidRootPart:GetChildren()) do
+                if obj:IsA("Sound") and (obj.Name == "Running" or obj.Name == "Jumping" or obj.Name == "Jump") then
+                    obj:Destroy()
+                end
+            end
+        end
+    end
+end)
+
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Block has no sound？";
+            Text = "Try Rejoin";
+            Duration = 5;
+        })
