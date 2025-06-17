@@ -1,0 +1,753 @@
+local notify = [[
+If you're reading this:
+Not recommended to play on weak phones — it may lag!
+This is still in beta, so be careful — there may be some bugs.
+Grass appearing while walking works well on the client side, but note: Minecraft is completely different from Roblox in terms of object handling. Creating all decals on parts may cause more lag. You should walk around to allow everything to be parented properly!
+
+Coming soon: Save feature (Test)
+]]
+
+print(notify)
+
+local lua = Instance.new("Folder", workspace)
+lua.Name = "Minecraft"
+local SETTING = Instance.new("Folder", lua)
+SETTING.Name = "SETTING"
+
+workspace.Baseplate:Destroy()
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local cam = workspace.CurrentCamera
+local player = Players.LocalPlayer
+
+if not isfolder("TexturePack") then makefolder(".TexturePack") end
+
+local assetCache = {}
+
+local function downloadTexture(name, url)
+    local path = ".TexturePack/"..name..".png"
+    if not isfile(path) then
+        local ok, data = pcall(function() return game:HttpGet(url) end)
+        if ok then writefile(path, data) end
+    end
+    if not assetCache[path] then
+        assetCache[path] = getcustomasset(path)
+    end
+    return assetCache[path]
+end
+
+local function convertToTextureID(input, saveName)
+    return tonumber(input) and "rbxassetid://"..input or (input:match("^https?://") and downloadTexture(saveName, input) or input)
+end
+
+local function createItem(name, top, bottom, right, left, front, back)
+local part = Instance.new("Part")
+part.Name = name
+part.Size = Vector3.new(4,4,4)
+part.Anchored = true
+part.Transparency = 1
+part.Material = Enum.Material.SmoothPlastic
+game:GetService("RunService").Heartbeat:Wait()
+
+local faces = {
+{Enum.NormalId.Top, top, "_Top"},
+{Enum.NormalId.Bottom, bottom, "_Bottom"},
+{Enum.NormalId.Right, right, "_Right"},
+{Enum.NormalId.Left, left, "_Left"},
+{Enum.NormalId.Front, front, "_Front"},
+{Enum.NormalId.Back, back, "_Back"}
+}
+game:GetService("RunService").Heartbeat:Wait()
+
+for _, f in ipairs(faces) do
+local decal = Instance.new("Decal")
+decal.Face = f[1]
+decal.Texture = convertToTextureID(f[2], name..f[3])
+decal.Parent = part
+end
+return part
+end
+
+local textures = {
+Grass = {
+"https://i.postimg.cc/KYDHrvvm/t-i-xu-ng.jpg",
+"https://i.postimg.cc/GpCfysRM/t-i-xu-ng.png",
+"https://i.postimg.cc/wjJPMQCy/t-i-xu-ng-2.jpg",
+"https://i.postimg.cc/wjJPMQCy/t-i-xu-ng-2.jpg",
+"https://i.postimg.cc/wjJPMQCy/t-i-xu-ng-2.jpg",
+"https://i.postimg.cc/wjJPMQCy/t-i-xu-ng-2.jpg"
+},
+Dirt = {
+"https://i.postimg.cc/GpCfysRM/t-i-xu-ng.png",
+"https://i.postimg.cc/GpCfysRM/t-i-xu-ng.png",
+"https://i.postimg.cc/GpCfysRM/t-i-xu-ng.png",
+"https://i.postimg.cc/GpCfysRM/t-i-xu-ng.png",
+"https://i.postimg.cc/GpCfysRM/t-i-xu-ng.png",
+"https://i.postimg.cc/GpCfysRM/t-i-xu-ng.png"
+},
+Stone = {
+"https://i.postimg.cc/sxkyWDw3/t-i-xu-ng-3.jpg",
+"https://i.postimg.cc/sxkyWDw3/t-i-xu-ng-3.jpg",
+"https://i.postimg.cc/sxkyWDw3/t-i-xu-ng-3.jpg",
+"https://i.postimg.cc/sxkyWDw3/t-i-xu-ng-3.jpg",
+"https://i.postimg.cc/sxkyWDw3/t-i-xu-ng-3.jpg",
+"https://i.postimg.cc/sxkyWDw3/t-i-xu-ng-3.jpg"
+},
+Bedrock = {
+"https://i.postimg.cc/MZMnncG2/t-i-xu-ng.png",
+"https://i.postimg.cc/MZMnncG2/t-i-xu-ng.png",
+"https://i.postimg.cc/MZMnncG2/t-i-xu-ng.png",
+"https://i.postimg.cc/MZMnncG2/t-i-xu-ng.png",
+"https://i.postimg.cc/MZMnncG2/t-i-xu-ng.png",
+"https://i.postimg.cc/MZMnncG2/t-i-xu-ng.png"
+},
+
+Leaf = {
+"https://i.postimg.cc/mrm7h67j/Background-Eraser-20250522-040055024.png",
+"https://i.postimg.cc/mrm7h67j/Background-Eraser-20250522-040055024.png",
+"https://i.postimg.cc/mrm7h67j/Background-Eraser-20250522-040055024.png",
+"https://i.postimg.cc/mrm7h67j/Background-Eraser-20250522-040055024.png",
+"https://i.postimg.cc/mrm7h67j/Background-Eraser-20250522-040055024.png",
+"https://i.postimg.cc/mrm7h67j/Background-Eraser-20250522-040055024.png",
+},
+
+Oak_Log = {
+"https://i.postimg.cc/fWGm3dSG/t-i-xu-ng.jpg",
+"https://i.postimg.cc/fWGm3dSG/t-i-xu-ng.jpg",
+"https://i.postimg.cc/sfQ5DmxP/t-i-xu-ng-2.jpg",
+"https://i.postimg.cc/sfQ5DmxP/t-i-xu-ng-2.jpg",
+"https://i.postimg.cc/sfQ5DmxP/t-i-xu-ng-2.jpg",
+"https://i.postimg.cc/sfQ5DmxP/t-i-xu-ng-2.jpg",
+},
+
+Sand = {
+"https://i.postimg.cc/85Pk0zDS/t-i-xu-ng-3.jpg",
+"https://i.postimg.cc/85Pk0zDS/t-i-xu-ng-3.jpg",
+"https://i.postimg.cc/85Pk0zDS/t-i-xu-ng-3.jpg",
+"https://i.postimg.cc/85Pk0zDS/t-i-xu-ng-3.jpg",
+"https://i.postimg.cc/85Pk0zDS/t-i-xu-ng-3.jpg",
+"https://i.postimg.cc/85Pk0zDS/t-i-xu-ng-3.jpg",
+},
+
+White_Glass = {
+"https://img.itch.zone/aW1hZ2UvMjM4NjE0Mi8xNDEyNTc4OC5wbmc=/original/L6dgyC.png",
+"https://img.itch.zone/aW1hZ2UvMjM4NjE0Mi8xNDEyNTc4OC5wbmc=/original/L6dgyC.png",
+"https://img.itch.zone/aW1hZ2UvMjM4NjE0Mi8xNDEyNTc4OC5wbmc=/original/L6dgyC.png",
+"https://img.itch.zone/aW1hZ2UvMjM4NjE0Mi8xNDEyNTc4OC5wbmc=/original/L6dgyC.png",
+"https://img.itch.zone/aW1hZ2UvMjM4NjE0Mi8xNDEyNTc4OC5wbmc=/original/L6dgyC.png",
+"https://img.itch.zone/aW1hZ2UvMjM4NjE0Mi8xNDEyNTc4OC5wbmc=/original/L6dgyC.png",
+},
+
+Crafting_Table = {
+"https://i.postimg.cc/5NpQ3yzf/images-1.jpg",
+"https://i.postimg.cc/Dy7bLL8C/t-i-xu-ng-1.jpg",
+"https://i.postimg.cc/vZyWZCdN/images-3.jpg",
+"https://i.postimg.cc/zfkP0nqx/images-2.jpg",
+"https://i.postimg.cc/vZyWZCdN/images-3.jpg",
+"https://i.postimg.cc/zfkP0nqx/images-2.jpg"
+},
+
+Cobblestone = {
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/c/c0/Cobblestone_%28texture%29_pTU20181129.png/revision/latest/thumbnail-down/width/200/height/200?cb=20200920155949",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/c/c0/Cobblestone_%28texture%29_pTU20181129.png/revision/latest/thumbnail-down/width/200/height/200?cb=20200920155949",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/c/c0/Cobblestone_%28texture%29_pTU20181129.png/revision/latest/thumbnail-down/width/200/height/200?cb=20200920155949",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/c/c0/Cobblestone_%28texture%29_pTU20181129.png/revision/latest/thumbnail-down/width/200/height/200?cb=20200920155949",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/c/c0/Cobblestone_%28texture%29_pTU20181129.png/revision/latest/thumbnail-down/width/200/height/200?cb=20200920155949",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/c/c0/Cobblestone_%28texture%29_pTU20181129.png/revision/latest/thumbnail-down/width/200/height/200?cb=20200920155949",
+},
+
+Block_of_Iron = {
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/5/5b/Block_of_Iron_%28texture%29_JE3_BE3.png/revision/latest?cb=20201006053737",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/5/5b/Block_of_Iron_%28texture%29_JE3_BE3.png/revision/latest?cb=20201006053737",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/5/5b/Block_of_Iron_%28texture%29_JE3_BE3.png/revision/latest?cb=20201006053737",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/5/5b/Block_of_Iron_%28texture%29_JE3_BE3.png/revision/latest?cb=20201006053737",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/5/5b/Block_of_Iron_%28texture%29_JE3_BE3.png/revision/latest?cb=20201006053737",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/5/5b/Block_of_Iron_%28texture%29_JE3_BE3.png/revision/latest?cb=20201006053737",
+},
+
+Block_of_Gold = {
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/2/2d/Block_of_Gold_%28texture%29_JE5_BE3.png/revision/latest?cb=20201001120858",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/2/2d/Block_of_Gold_%28texture%29_JE5_BE3.png/revision/latest?cb=20201001120858",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/2/2d/Block_of_Gold_%28texture%29_JE5_BE3.png/revision/latest?cb=20201001120858",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/2/2d/Block_of_Gold_%28texture%29_JE5_BE3.png/revision/latest?cb=20201001120858",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/2/2d/Block_of_Gold_%28texture%29_JE5_BE3.png/revision/latest?cb=20201001120858",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/2/2d/Block_of_Gold_%28texture%29_JE5_BE3.png/revision/latest?cb=20201001120858",
+},
+
+Block_of_Diamond = {
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/b/b4/Block_of_Diamond_%28texture%29_JE4_BE3.png/revision/latest?cb=20201001120845",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/b/b4/Block_of_Diamond_%28texture%29_JE4_BE3.png/revision/latest?cb=20201001120845",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/b/b4/Block_of_Diamond_%28texture%29_JE4_BE3.png/revision/latest?cb=20201001120845",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/b/b4/Block_of_Diamond_%28texture%29_JE4_BE3.png/revision/latest?cb=20201001120845",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/b/b4/Block_of_Diamond_%28texture%29_JE4_BE3.png/revision/latest?cb=20201001120845",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/b/b4/Block_of_Diamond_%28texture%29_JE4_BE3.png/revision/latest?cb=20201001120845",
+},
+
+Glowstone = {
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/c/c7/Glowstone_%28texture%29_JE4_BE3.png/revision/latest?cb=20201001134117",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/c/c7/Glowstone_%28texture%29_JE4_BE3.png/revision/latest?cb=20201001134117",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/c/c7/Glowstone_%28texture%29_JE4_BE3.png/revision/latest?cb=20201001134117",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/c/c7/Glowstone_%28texture%29_JE4_BE3.png/revision/latest?cb=20201001134117",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/c/c7/Glowstone_%28texture%29_JE4_BE3.png/revision/latest?cb=20201001134117",
+"https://static.wikia.nocookie.net/minecraft_gamepedia/images/c/c7/Glowstone_%28texture%29_JE4_BE3.png/revision/latest?cb=20201001134117",
+},
+
+Barrier = {"", "", "", "", "", "",},
+
+Obsidian = {"https://static.wikia.nocookie.net/minecraft_gamepedia/images/5/5a/Obsidian_%28texture%29_JE3_BE2.png/revision/latest?cb=20201001140204", "https://static.wikia.nocookie.net/minecraft_gamepedia/images/5/5a/Obsidian_%28texture%29_JE3_BE2.png/revision/latest?cb=20201001140204", "https://static.wikia.nocookie.net/minecraft_gamepedia/images/5/5a/Obsidian_%28texture%29_JE3_BE2.png/revision/latest?cb=20201001140204", "https://static.wikia.nocookie.net/minecraft_gamepedia/images/5/5a/Obsidian_%28texture%29_JE3_BE2.png/revision/latest?cb=20201001140204", "https://static.wikia.nocookie.net/minecraft_gamepedia/images/5/5a/Obsidian_%28texture%29_JE3_BE2.png/revision/latest?cb=20201001140204", "https://static.wikia.nocookie.net/minecraft_gamepedia/images/5/5a/Obsidian_%28texture%29_JE3_BE2.png/revision/latest?cb=20201001140204",},
+}
+
+game.Players.LocalPlayer.Character:MoveTo(game.Players.LocalPlayer.Character.HumanoidRootPart.Position + Vector3.new(0,32,0))
+game.Players.LocalPlayer.Character.HumanoidRootPart.Anchored = true
+
+local blockMap = {}
+local generatedChunks = {}
+local function vecToStr(v) return string.format("%d_%d_%d", v.X, v.Y, v.Z) end
+local function chunkKey(x, z) return tostring(x//40).."_"..tostring(z//40) end
+
+local function isSurrounded(pos)
+local directions = {
+Vector3.new(4, 0, 0), Vector3.new(-4, 0, 0),
+Vector3.new(0, 4, 0), Vector3.new(0, -4, 0),
+Vector3.new(0, 0, 4), Vector3.new(0, 0, -4)
+}
+for _, dir in ipairs(directions) do
+local checkPos = pos + dir
+if not blockMap[vecToStr(checkPos)] then
+return false
+end
+end
+return true
+end
+
+local function updateVisibility(pos, block)
+if isSurrounded(pos) then
+block.Transparency = 1
+else
+block.Transparency = 0
+end
+for _, d in ipairs(block:GetChildren()) do
+if d:IsA("Decal") then
+d.Transparency = block.Transparency
+end
+end
+end
+
+local function updateNeighbors(pos)
+local directions = {
+Vector3.new(4, 0, 0), Vector3.new(-4, 0, 0),
+Vector3.new(0, 4, 0), Vector3.new(0, -4, 0),
+Vector3.new(0, 0, 4), Vector3.new(0, 0, -4)
+}
+for _, dir in ipairs(directions) do
+local neighborPos = pos + dir
+local neighborBlock = blockMap[vecToStr(neighborPos)]
+if neighborBlock then
+updateVisibility(neighborPos, neighborBlock)
+end
+end
+end
+
+local function isNearRoot(pos)
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if not root then return false end
+	return (pos - root.Position).Magnitude <= 65
+end
+
+local function spawnBlock(name, tex, pos)
+	local key = vecToStr(pos)
+	if blockMap[key] then return end
+
+	local block = Instance.new("Part")
+block.Transparency = 1
+	block.Name = name
+	block.Size = Vector3.new(4,4,4)
+	block.Anchored = true
+	block.Position = pos
+block.Material = Enum.Material.SmoothPlastic
+
+	if name == "Grass" then
+		block.Color = Color3.fromRGB(65, 95, 25)
+	elseif name == "Dirt" then
+		block.Color = Color3.fromRGB(120, 72, 0)
+	elseif name == "Bedrock" then
+		block.Color = Color3.fromRGB(30, 30, 30)
+	end
+
+	block.Parent = lua
+	blockMap[key] = block
+
+	if isNearRoot(pos) then
+		local faces = {
+			{Enum.NormalId.Top, tex[1]}, {Enum.NormalId.Bottom, tex[2]},
+			{Enum.NormalId.Right, tex[3]}, {Enum.NormalId.Left, tex[4]},
+			{Enum.NormalId.Front, tex[5]}, {Enum.NormalId.Back, tex[6]}
+		}
+		for i, f in ipairs(faces) do
+			local decal = Instance.new("Decal")
+			decal.Face = f[1]
+			decal.Texture = convertToTextureID(f[2], name .. "_Face" .. i)
+			decal.Parent = block
+		end
+	end
+
+	updateVisibility(pos, block)
+	updateNeighbors(pos)
+
+	block.AncestryChanged:Connect(function(_, parent)
+		if not parent then
+			blockMap[key] = nil
+			updateNeighbors(pos)
+		end
+	end)
+end
+
+local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
+local player = game.Players.LocalPlayer
+
+local MIN_FPS = 25
+local MAX_FRAME_TIME = 1 / MIN_FPS
+
+local loadingChunks = 0
+local chunkLoadHistory = {}
+local generatedChunks = {}
+
+local function chunkKey(cx, cz)
+    return tostring(cx) .. "," .. tostring(cz)
+end
+
+local function spawnDelayedBlock(name, tex, pos, delay)
+    coroutine.wrap(function()
+        if delay > 0 then task.wait(delay) end
+        spawnBlock(name, tex, pos)
+    end)()
+end
+
+local function getChunkDelay(cx, cz)
+    local key = chunkKey(cx, cz)
+    if chunkLoadHistory[key] then
+        return 0
+    end
+
+    local baseDelay = 0.005  
+    local chunkCount = 0  
+    for _ in pairs(generatedChunks) do  
+        chunkCount += 1  
+    end  
+
+    local delay = baseDelay * (1 + (chunkCount / 20))  
+    return math.min(delay, MAX_FRAME_TIME * 0.5)
+end
+
+local function showChunkNotification()
+    StarterGui:SetCore("SendNotification", {
+        Title = "Chunk Still Loading",
+        Text = "May cause slow performance!",
+        Duration = 5,
+    })
+end
+
+local GB = Instance.new("Folder", SETTING)
+GB.Name = "GRASS"
+local GRASS_BATCH = Instance.new("NumberValue", GB)
+GRASS_BATCH.Name = "GRASS_BATCH"
+GRASS_BATCH.Value = 10
+
+local DB = Instance.new("Folder", SETTING)
+DB.Name = "DIRT"
+local DIRT_BATCH = Instance.new("NumberValue", DB)
+DIRT_BATCH.Name = "DIRT_BATCH"
+DIRT_BATCH.Value = 15
+
+local BB = Instance.new("Folder", SETTING)
+BB.Name = "BEDROCK"
+local BEDROCK_BATCH = Instance.new("NumberValue", BB)
+BEDROCK_BATCH.Name = "BEDROCK_BATCH"
+BEDROCK_BATCH.Value = 5
+
+local function generateChunk(cx, cz)
+    local key = chunkKey(cx, cz)
+    if generatedChunks[key] then return end
+    generatedChunks[key] = true
+    chunkLoadHistory[key] = true
+
+    loadingChunks += 1
+    if loadingChunks == 1 then
+        showChunkNotification()
+    end
+
+    local delay = getChunkDelay(cx, cz)
+
+    local grassBlocks = {}
+    local dirtBlocks = {}
+    local bedrockBlocks = {}
+
+    for x = cx, cx + 76, 4 do
+        for z = cz, cz + 76, 4 do
+            for y = 0, 12, 4 do
+                local name, tex
+                if y == 0 then
+                    name, tex = "Bedrock", textures.Bedrock
+                    table.insert(bedrockBlocks, {name = name, tex = tex, pos = Vector3.new(x, y, z)})
+                elseif y <= 8 then
+                    name, tex = "Dirt", textures.Dirt
+                    table.insert(dirtBlocks, {name = name, tex = tex, pos = Vector3.new(x, y, z)})
+                else
+                    name, tex = "Grass", textures.Grass
+                    table.insert(grassBlocks, {name = name, tex = tex, pos = Vector3.new(x, y, z)})
+                end
+            end
+        end
+    end
+
+    coroutine.wrap(function()
+        for i = 1, #grassBlocks, GRASS_BATCH.Value do
+            for j = i, math.min(i + GRASS_BATCH.Value - 1, #grassBlocks) do
+                local block = grassBlocks[j]
+                spawnBlock(block.name, block.tex, block.pos)
+            end
+            task.wait(delay)
+        end
+        loadingChunks -= 1
+    end)()
+
+    coroutine.wrap(function()
+        for i = 1, #dirtBlocks, DIRT_BATCH.Value do
+            for j = i, math.min(i + DIRT_BATCH.Value - 1, #dirtBlocks) do
+                local block = dirtBlocks[j]
+                spawnBlock(block.name, block.tex, block.pos)
+            end
+            RunService.Heartbeat:Wait(delay)
+        end
+    end)()
+
+    coroutine.wrap(function()
+        for i = 1, #bedrockBlocks, BEDROCK_BATCH.Value do
+            for j = i, math.min(i + BEDROCK_BATCH.Value - 1, #bedrockBlocks) do
+                local block = bedrockBlocks[j]
+                spawnBlock(block.name, block.tex, block.pos)
+            end
+            RunService.Heartbeat:Wait(delay)
+        end
+    end)()
+end
+
+RunService.Heartbeat:Connect(function()
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local pos = hrp.Position
+    local px, pz = pos.X, pos.Z
+
+    for dx = -1, 1 do
+        for dz = -1, 1 do
+            local cx = math.floor((px + dx * 80) / 80) * 80
+            local cz = math.floor((pz + dz * 80) / 80) * 80
+
+            local chunkCenterX = cx + 40
+            local chunkCenterZ = cz + 40
+            local dist = math.max(math.abs(px - chunkCenterX), math.abs(pz - chunkCenterZ))
+
+            if dist <= 75 then 
+                generateChunk(cx, cz)
+            end
+        end
+    end
+end)
+
+
+local function CreateBlockTool()
+for name, tex in pairs(textures) do
+local tool = Instance.new("Tool")
+tool.Name = name .. "_Item"
+tool.RequiresHandle = false
+tool.Parent = player:WaitForChild("Backpack")
+tool.ToolTip = string.gsub(name, "_", " ")
+
+tool.Activated:Connect(function()  
+    local m = player:GetMouse()  
+    local tgt = m.Target  
+    if tgt and m.TargetSurface then  
+        local dir = Vector3.FromNormalId(m.TargetSurface)  
+        local pos = tgt.Position + dir * 4  
+        pos = Vector3.new(  
+            math.floor(pos.X/4 + 0.5)*4,  
+            math.floor(pos.Y/4 + 0.5)*4,  
+            math.floor(pos.Z/4 + 0.5)*4  
+        )  
+          
+        local distance = (pos - player.Character.HumanoidRootPart.Position).Magnitude  
+        if distance <= 25 then  
+            spawnBlock(name, tex, pos)  
+        else  
+        end  
+    end  
+end)
+end
+end
+
+local function createSeedParticles(position, texturePath)
+local particlePart = Instance.new("Part")
+particlePart.Size = Vector3.new(0.2, 0.2, 0.2)
+particlePart.Anchored = true
+particlePart.CanCollide = false
+particlePart.Transparency = 1
+particlePart.Position = position
+particlePart.Parent = workspace
+
+local particleEmitter = Instance.new("ParticleEmitter")
+particleEmitter.Texture = texturePath
+particleEmitter.Lifetime = NumberRange.new(0.5, 0.7)
+particleEmitter.Speed = NumberRange.new(10, 25)
+particleEmitter.VelocitySpread = 180 
+particleEmitter.Acceleration = Vector3.new(0, -200, 0) 
+
+particleEmitter.Size = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.3),
+    NumberSequenceKeypoint.new(1, 0)
+})
+
+particleEmitter.Rate = 0
+particleEmitter:Emit(80)
+
+particleEmitter.Parent = particlePart
+
+delay(1.5, function()
+    particlePart:Destroy()
+end)
+
+end
+
+local function CreateDeleteTool()
+    local tool = Instance.new("Tool")
+    tool.Name = "Delete Block"
+    tool.RequiresHandle = false
+    tool.Parent = player:WaitForChild("Backpack")
+
+    tool.Activated:Connect(function()
+        local m = player:GetMouse()
+        local tgt = m.Target
+        if tgt and tgt:IsA("Part") and blockMap[vecToStr(tgt.Position)] then
+            local decal = tgt:FindFirstChildWhichIsA("Decal")
+            local texturePath = decal and decal.Texture or ""
+            local distance = (tgt.Position - player.Character.HumanoidRootPart.Position).Magnitude
+            if distance <= 25 then
+                createSeedParticles(tgt.Position, texturePath)
+                tgt:Destroy()
+            else
+            end
+        end
+    end)
+end
+
+CreateDeleteTool() CreateBlockTool()
+
+-- More
+
+game:GetService("Lighting").FogEnd = 150
+game:GetService("Lighting").FogStart = 50
+
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+
+local MAX_DISTANCE = 80
+local PROCESS_MIN = 10
+local PROCESS_MAX = 50
+local MAX_SCAN_PARTS = 400
+
+local currentProcessRate = PROCESS_MIN
+local sortedBlocks = {}
+local index = 1
+local lastCamPos = nil
+local lastFPSCheck = tick()
+local frameCount = 0
+
+local function scanBlocksByCamera()
+	local camPos = camera.CFrame.Position
+
+	sortedBlocks = {}
+	index = 1
+
+	local regionSize = Vector3.new(MAX_DISTANCE * 2, MAX_DISTANCE, MAX_DISTANCE * 2)
+	local cframe = CFrame.new(camPos)
+	local parts = workspace:GetPartBoundsInBox(cframe, regionSize)
+
+	local count = 0
+	for _, part in ipairs(parts) do
+		if count >= MAX_SCAN_PARTS then break end
+
+		if part:IsDescendantOf(workspace.Minecraft)
+			and part:IsA("BasePart")
+			and part.Transparency == 0
+			and not part:FindFirstChildWhichIsA("Decal")
+		then
+			local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
+			if onScreen then
+				local distance = (part.Position - camPos).Magnitude
+				table.insert(sortedBlocks, {
+					block = part,
+					pos = part.Position,
+					dist = distance,
+					name = part.Name
+				})
+				count += 1
+			end
+		end
+	end
+
+	table.sort(sortedBlocks, function(a, b)
+		return a.dist < b.dist
+	end)
+end
+
+task.spawn(function()
+	RunService.Heartbeat:Connect(function(dt)
+		local now = tick()
+		frameCount += 1
+
+		if now - lastFPSCheck >= 1 then
+			local avgFPS = frameCount / (now - lastFPSCheck)
+			lastFPSCheck = now
+			frameCount = 0
+
+			if avgFPS >= 58 then
+				currentProcessRate = PROCESS_MAX
+			elseif avgFPS >= 20 then
+				currentProcessRate = math.clamp(currentProcessRate + 1, PROCESS_MIN, PROCESS_MAX)
+			else
+				currentProcessRate = math.clamp(currentProcessRate - 1, PROCESS_MIN, PROCESS_MAX)
+			end
+		end
+
+		for _ = 1, currentProcessRate do
+			if index > #sortedBlocks then break end
+
+			local data = sortedBlocks[index]
+			local tex = textures[data.name]
+			if tex then
+				for faceIdx, faceEnum in ipairs({
+					Enum.NormalId.Top, Enum.NormalId.Bottom,
+					Enum.NormalId.Right, Enum.NormalId.Left,
+					Enum.NormalId.Front, Enum.NormalId.Back
+				}) do
+					if not data.block:FindFirstChild(data.name .. "_Face" .. faceIdx) then
+						local decal = Instance.new("Decal")
+						decal.Name = data.name .. "_Face" .. faceIdx
+						decal.Face = faceEnum
+						decal.Texture = convertToTextureID(tex[faceIdx], decal.Name)
+						decal.Parent = data.block
+					end
+				end
+			end
+
+			updateVisibility(data.pos, data.block)
+			updateNeighbors(data.pos)
+			index += 1
+		end
+
+		if index > #sortedBlocks then
+			local camNow = camera.CFrame.Position
+			if not lastCamPos or (camNow - lastCamPos).Magnitude >= 20 then
+				lastCamPos = camNow
+				scanBlocksByCamera()
+			end
+		end
+	end)
+end)
+
+game.Players.LocalPlayer.CharacterAdded:Connect(function()
+CreateDeleteTool() CreateBlockTool()
+end)
+
+-- Temporary
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+game.CoreGui.RobloxGui.Enabled = false
+
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "FPSDestroyGui"
+gui.ResetOnSpawn = false
+gui.ScreenInsets = Enum.ScreenInsets.None
+gui.DisplayOrder = 7
+
+local frame = Instance.new("Frame", gui)
+frame.Name = "FullScreenFrame"
+frame.Size = UDim2.new(1, 0, 1, 0)
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+frame.BackgroundTransparency = 0
+
+local tex = Instance.new("TextLabel", frame)
+tex.Text = "Preparing Resources, Please Wait!"
+tex.TextSize = 20
+tex.Position = UDim2.new(0, 0, 0.5, -30)
+tex.Size = UDim2.new(1, 0, 0, 50)
+tex.BackgroundTransparency = 1
+tex.TextColor3 = Color3.new(1, 1, 1)
+
+local filesToCheck = {}
+for i = 1, 6 do
+	table.insert(filesToCheck, "Dirt_Face" .. i .. ".png")
+	table.insert(filesToCheck, "Grass_Face" .. i .. ".png")
+	table.insert(filesToCheck, "Bedrock_Face" .. i .. ".png")
+end
+
+repeat
+	local allExist = true
+	for _, file in ipairs(filesToCheck) do
+		if not isfile(".TexturePack/" .. file) then
+			allExist = false
+			break
+		end
+	end
+	task.wait(0.1)
+until allExist
+
+task.wait(1)
+
+task.spawn(function()
+	local texts = {"Loading", "Loading.", "Loading..", "Loading..."}
+	while gui and gui.Parent do
+		for _, v in ipairs(texts) do
+			if not gui or not gui.Parent then return end
+			tex.Text = v
+			task.wait(1)
+		end
+	end
+end)
+
+local fps = 0
+local lastUpdate = tick()
+local warmupFrames = 0
+
+local connection
+connection = RunService.Heartbeat:Connect(function()
+	local now = tick()
+	local dt = now - lastUpdate
+	lastUpdate = now
+
+	if warmupFrames < 5 then
+		warmupFrames += 1
+		return
+	end
+
+	fps = 1 / dt
+
+	if fps > 35 and gui then
+		tex.Text = "Done!"
+		task.wait(2)
+		game.CoreGui.RobloxGui.Enabled = true
+		local char = Players.LocalPlayer.Character
+		if char and char:FindFirstChild("HumanoidRootPart") then
+			char.HumanoidRootPart.Anchored = false
+		end
+		gui:Destroy()
+		connection:Disconnect()
+	end
+end)
