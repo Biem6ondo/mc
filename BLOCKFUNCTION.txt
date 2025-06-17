@@ -1,4 +1,4 @@
-local ver = 8
+local ver = 10
 
 -- Crafting Table
 
@@ -561,7 +561,7 @@ runService.Heartbeat:Connect(function()
         updateTransparency()
 end)
         for _, offset in ipairs(offsets) do
-            task.wait(0.5)
+            task.wait(0.1)
 
             for _, glass in ipairs(Minecraft.Glass_Folder:GetChildren()) do
                 if glass:IsA("BasePart") then
