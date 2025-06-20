@@ -1,4 +1,4 @@
-print("Module: Item Img Loaded!" 2)
+print("Module: Item Img Loaded! 2")
 
 local function Apply()
 local TexturePackFolder = ".TexturePack/"
