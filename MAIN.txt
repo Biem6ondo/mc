@@ -281,6 +281,8 @@ block.Material = Enum.Material.SmoothPlastic
 		block.Color = Color3.fromRGB(120, 72, 0)
 	elseif name == "Bedrock" then
 		block.Color = Color3.fromRGB(30, 30, 30)
+elseif name == "Leaf" then
+		block.Color = Color3.fromRGB(60, 90, 20)
 	end
 
 	block.Parent = lua
@@ -371,7 +373,7 @@ local BEDROCK_BATCH = Instance.new("NumberValue", BB)
 BEDROCK_BATCH.Name = "BEDROCK_BATCH"
 BEDROCK_BATCH.Value = 10
 
-local SEED = 12345
+local SEED = math.random(1, 20000)
 local playerSpawned = false
 
 local function generateChunk(cx, cz)
@@ -386,7 +388,7 @@ local function generateChunk(cx, cz)
     end
 
     local delay = 0.01
-    local TREE_CHANCE = 0.02
+    local TREE_CHANCE = 0.005
 
     local grassBlocks = {}
     local dirtBlocks = {}
@@ -677,7 +679,7 @@ local lastFPSCheck = tick()
 local frameCount = 0
 
 local rootPart = nil
-local RESCAN_DISTANCE = 40
+local RESCAN_DISTANCE = 300
 local lastRescan = 0
 local RESCAN_COOLDOWN = 0
 local needRescan = false
@@ -807,7 +809,7 @@ task.spawn(function()
 
 		if index > #sortedBlocks then
 			local camNow = camera.CFrame.Position
-			if not lastCamPos or (camNow - lastCamPos).Magnitude >= 80 then
+			if not lastCamPos or (camNow - lastCamPos).Magnitude >= 50 then
 				lastCamPos = camNow
 				scanBlocksByCamera()
 			end
