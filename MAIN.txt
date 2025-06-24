@@ -666,7 +666,7 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local camera = Workspace.CurrentCamera
 
-local MAX_DISTANCE = 160
+local MAX_DISTANCE = 100
 local PROCESS_MIN = 100
 local PROCESS_MAX = 200
 local MAX_SCAN_PARTS = math.huge
@@ -679,7 +679,7 @@ local lastFPSCheck = tick()
 local frameCount = 0
 
 local rootPart = nil
-local RESCAN_DISTANCE = 300
+local RESCAN_DISTANCE = 100
 local lastRescan = 0
 local RESCAN_COOLDOWN = 0
 local needRescan = false
@@ -872,7 +872,7 @@ task.spawn(function()
 	while gui and gui.Parent do
 		for _, v in ipairs(texts) do
 			if not gui or not gui.Parent then return end
-			tex.Text = v
+			tex.Text = v .. "(Seed: " .. SEED .. ")"
 			task.wait(1)
 		end
 	end
