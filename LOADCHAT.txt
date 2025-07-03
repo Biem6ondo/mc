@@ -1,0 +1,150 @@
+
+if not isfile(".MCFont.lua") then
+writefile(".MCFont.lua", [[
+return function(text, scale, bgTrans, defaultColor, pos, parent, maxLineWidth)
+	local RunService = game:GetService("RunService")
+	local obj = {}
+	local obfuscatedLabels = {}
+
+	local F = Instance.new("Frame")
+	F.Size = UDim2.new(0, 1000, 0, 1000)
+	F.Position = pos
+	F.BackgroundColor3 = Color3.new()
+	F.BackgroundTransparency = bgTrans
+	F.ClipsDescendants = true
+	F.BorderSizePixel = 0
+	obj.Frame = F
+
+	local holder = Instance.new("Frame", F)
+	holder.Size = UDim2.new(1, 0, 1, 0)
+	holder.BackgroundTransparency = 1
+
+	local path = ".TexturePack/ascii.png"
+	if not isfile(path) then return end
+	local fontImage = getcustomasset(path)
+
+	local size = 8
+	local getCharWidth = function(c)
+		return ({
+			i = 3, l = 4, t = 5, j = 5, f = 5, r = 5,
+			m = 6, w = 8, I = 4, T = 6, J = 5, F = 6,
+			[" "] = 4, ["."] = 3, [","] = 3, ["'"] = 2, [":"] = 3
+		})[c] or 6
+	end
+
+	local colorMap = {
+		["0"] = Color3.fromRGB(0, 0, 0),
+		["1"] = Color3.fromRGB(0, 0, 170),
+		["2"] = Color3.fromRGB(0, 170, 0),
+		["3"] = Color3.fromRGB(0, 170, 170),
+		["4"] = Color3.fromRGB(170, 0, 0),
+		["5"] = Color3.fromRGB(170, 0, 170),
+		["6"] = Color3.fromRGB(255, 170, 0),
+		["7"] = Color3.fromRGB(170, 170, 170),
+		["8"] = Color3.fromRGB(85, 85, 85),
+		["9"] = Color3.fromRGB(85, 85, 255),
+		a = Color3.fromRGB(85, 255, 85),
+		b = Color3.fromRGB(85, 255, 255),
+		c = Color3.fromRGB(255, 85, 85),
+		d = Color3.fromRGB(255, 85, 255),
+		e = Color3.fromRGB(255, 255, 85),
+		f = Color3.fromRGB(255, 255, 255),
+	}
+
+	local labels = {}
+
+	local function render(newText)
+		for _, l in ipairs(labels) do l:Destroy() end
+		table.clear(labels)
+		table.clear(obfuscatedLabels)
+
+		local currentColor = defaultColor or Color3.new(1, 1, 1)
+		local isBold = false
+		local isCrazy = false
+		local x, y = 0, 0
+		local i = 1
+
+		while i <= #newText do
+			local code = newText:sub(i, i + 2)
+			local tag = code:match("^<([0-9a-fbk])>")
+
+			if tag then
+				if tag == "b" then isBold = true
+				elseif tag == "k" then isCrazy = true
+				elseif colorMap[tag] then currentColor = colorMap[tag] end
+				i += 3
+			else
+				local char = newText:sub(i, i)
+				if char == "\n" then
+					y += size * scale + 2
+					x = 0
+					i += 1
+				else
+					local width = getCharWidth(char) * scale
+					if maxLineWidth and x + width > maxLineWidth then
+						y += size * scale + 2
+						x = 0
+					end
+
+					local function makeLabel(c, offX)
+						local b = string.byte(c)
+						local lbl = Instance.new("ImageLabel", holder)
+						lbl.Size = UDim2.new(0, size * scale, 0, size * scale)
+						lbl.Position = UDim2.new(0, x + (offX or 0), 0, y)
+						lbl.BackgroundTransparency = 1
+						lbl.Image = fontImage
+						lbl.ImageRectOffset = Vector2.new((b % 16) * size, math.floor(b / 16) * size)
+						lbl.ImageRectSize = Vector2.new(size, size)
+						lbl.ImageColor3 = currentColor
+						lbl.ResampleMode = Enum.ResamplerMode.Pixelated
+						table.insert(labels, lbl)
+						return lbl
+					end
+
+					local display = isCrazy and string.char(math.random(33, 126)) or char
+					local main = makeLabel(display)
+					if isCrazy then table.insert(obfuscatedLabels, main) end
+					if isBold then makeLabel(display, 1) end
+
+					x += width + 1
+					i += 1
+				end
+			end
+		end
+
+		F.Size = UDim2.new(0, maxLineWidth or x + 4, 0, y + size * scale + 4)
+	end
+
+	render(text)
+
+	RunService.RenderStepped:Connect(function()
+		for _, lbl in ipairs(obfuscatedLabels) do
+			local rand = math.random(33, 126)
+			local col = rand % 16
+			local row = math.floor(rand / 16)
+			lbl.ImageRectOffset = Vector2.new(col * size, row * size)
+		end
+	end)
+
+	function obj:Update(newText)
+		render(newText)
+	end
+
+	if parent then
+		F.Parent = parent
+	else
+		local gui = Instance.new("ScreenGui", game.CoreGui)
+		gui.ResetOnSpawn = false
+		F.Parent = gui
+	end
+
+	return obj
+end
+]])
+end
+
+if not isfile(".TexturePack/ascii.png") then
+makefolder(".TexturePack")
+writefile(".TexturePack/ascii.png", game:HttpGet("https://i.postimg.cc/GtXq8Dw2/ascii.png"))
+end
+
