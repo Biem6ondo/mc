@@ -1,0 +1,193 @@
+print("Module: Chat is Loaded!")
+
+local MCText = loadstring(readfile(".MCFont.lua"))()
+
+local sg = Instance.new("ScreenGui", game.CoreGui)
+sg.Name = "Message"
+
+local f = Instance.new("ScrollingFrame", sg)
+Instance.new("UIListLayout", f)
+
+f.Size = UDim2.new(0, 500, 0.4, 0)
+f.Position = UDim2.new(0, 0, 0.2, 0)
+f.CanvasSize = UDim2.new(0, 0, 0, 0)
+f.AutomaticCanvasSize = Enum.AutomaticSize.Y
+f.ScrollBarThickness = 0
+f.ScrollingEnabled = false
+f.BackgroundTransparency = 1
+
+local function fadeAndDestroy(obj)
+	task.delay(10, function()
+		if not obj or not obj.Frame or not obj.Frame:IsDescendantOf(f) then return end
+
+		local totalSteps = 20
+		for step = 0, totalSteps do
+			task.wait(0.05)
+			local alpha = step / totalSteps
+			for _, v in ipairs(obj.Frame:GetDescendants()) do
+				if v:IsA("ImageLabel") then
+					v.ImageTransparency = alpha
+				elseif v:IsA("Frame") then
+					v.BackgroundTransparency = alpha
+				end
+			end
+		end
+
+		obj.Frame:Destroy()
+	end)
+end
+
+_G.sendMessage = function(text, color)
+	local msg = MCText(text, 2.7, 0.2, color or Color3.new(1, 1, 1), UDim2.new(0, 0, 0, 0), f, Vector2.new(0, 0), 500)
+	task.spawn(fadeAndDestroy, msg)
+	task.wait()
+	f.CanvasPosition = Vector2.new(0, f.AbsoluteCanvasSize.Y)
+end
+
+-- Notify
+
+local url = "https://i.postimg.cc/Jn7sq0w1/Photoroom-20250705-001328.png"
+local path = "customimage.png"
+local ur = "https://files.catbox.moe/9ft2jd.mp3"
+local pat = "Click.ogg"
+
+if not isfile(path) then
+    writefile(path, game:HttpGet(url))
+end
+
+if not isfile(pat) then
+    writefile(pat, game:HttpGet(ur))
+end
+
+local TweenService = game:GetService("TweenService")
+
+local function playClickSound()
+local i = Instance.new("Sound", workspace)
+i.Volume = 1
+i.PlayOnRemove = true
+i.SoundId = getcustomasset(pat)
+i:Destroy()
+end
+
+_G.createChooseNotify = function(title, content, text, _text, onButton1, onButton2)
+    local gui = Instance.new("ScreenGui", game.CoreGui)
+    local bg = Instance.new("Frame", gui)
+    local img = Instance.new("ImageLabel", bg)
+    local titleScroll = Instance.new("ScrollingFrame", img)
+    local titleLabel = Instance.new("TextLabel", titleScroll)
+    local scroll = Instance.new("ScrollingFrame", img)
+    local contentLabel = Instance.new("TextLabel", scroll)
+    local cf = Instance.new("Frame", img)
+    Instance.new("UIListLayout", cf)
+    local bt = Instance.new("TextButton", cf)
+    local bb = Instance.new("TextButton", cf)
+
+    gui.Name = "MCCHOOSEUI"
+    gui.IgnoreGuiInset = true
+    gui.ScreenInsets = Enum.ScreenInsets.None
+
+    bg.AnchorPoint = Vector2.new(0, 0)
+    bg.Position = UDim2.new(1, 0, 0, 0)
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3 = Color3.new(0, 0, 0)
+    bg.BackgroundTransparency = 0.4
+    bg.Active = true
+
+    TweenService:Create(bg, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0, 0, 0, 0)
+    }):Play()
+
+    img.AnchorPoint = Vector2.new(0.5, 0.5)
+    img.Position = UDim2.new(0.5, 0, 0.5, 0)
+    img.Size = UDim2.new(0.856, 0, 0.7, 0)
+    img.Image = getcustomasset(path)
+    img.ScaleType = Enum.ScaleType.Fit
+    img.SizeConstraint = Enum.SizeConstraint.RelativeYY
+    img.BackgroundTransparency = 1
+    img.Active = true
+
+    titleScroll.Position = UDim2.new(0.05, 0, 0.03, 0)
+    titleScroll.Size = UDim2.new(0.9, 0, 0.1, 0)
+    titleScroll.BackgroundTransparency = 1
+    titleScroll.ScrollBarThickness = 0
+    titleScroll.ScrollingDirection = Enum.ScrollingDirection.X
+    titleScroll.AutomaticCanvasSize = Enum.AutomaticSize.X
+    titleScroll.CanvasSize = UDim2.new(0, 0, 1, 0)
+
+    titleLabel.Text = title or ""
+    titleLabel.Size = UDim2.new(0, 0, 1, 0)
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.TextColor3 = Color3.fromRGB(63, 63, 63)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.TextSize = 17
+    titleLabel.AutomaticSize = Enum.AutomaticSize.X
+
+    scroll.Position = UDim2.new(0.05, 0, 0.15, 0)
+    scroll.Size = UDim2.new(0.9, 0, 0.42, 0)
+    scroll.CanvasSize = UDim2.new(1, 0, 0, 0)
+    scroll.ScrollBarThickness = 0
+    scroll.BackgroundTransparency = 1
+    scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+
+    contentLabel.Size = UDim2.new(1, -10, 0, 0)
+    contentLabel.Position = UDim2.new(0, 5, 0, 0)
+    contentLabel.Text = content or ""
+    contentLabel.TextXAlignment = Enum.TextXAlignment.Left
+    contentLabel.TextYAlignment = Enum.TextYAlignment.Top
+    contentLabel.TextColor3 = Color3.new(1, 1, 1)
+    contentLabel.BackgroundTransparency = 1
+    contentLabel.TextSize = 20
+    contentLabel.Font = Enum.Font.SourceSans
+    contentLabel.RichText = true
+    contentLabel.TextWrapped = true
+    contentLabel.AutomaticSize = Enum.AutomaticSize.Y
+
+    cf.Size = UDim2.new(0.9, 0, 0.35, 0)
+    cf.Position = UDim2.new(0.05, 0, 0.6, 0)
+    cf.BackgroundTransparency = 1
+
+    local function closeUI(callback)
+        local tween = TweenService:Create(bg, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Position = UDim2.new(1, 0, 0, 0)
+        })
+        tween:Play()
+        tween.Completed:Connect(function()
+            gui:Destroy()
+            if callback then callback() end
+        end)
+    end
+
+    bt.Size = UDim2.new(1, 0, 0.5, 0)
+    bt.BackgroundTransparency = 1
+    bt.Text = ""
+    bt.ZIndex = math.huge
+    bt.TextSize = 17
+    bt.TextColor3 = Color3.fromRGB(63, 63, 63)
+    bt.MouseButton1Click:Connect(function()
+playClickSound()
+        closeUI(onButton1)
+    end)
+
+    bb.Size = UDim2.new(1, 0, 0.5, 0)
+    bb.BackgroundTransparency = 1
+    bb.Text = ""
+    bb.TextSize = 17
+    bb.TextColor3 = Color3.fromRGB(63, 63, 63)
+    bb.ZIndex = math.huge
+    bb.MouseButton1Click:Connect(function()
+playClickSound()
+        closeUI(onButton2)
+    end)
+
+    if isfile(".MCFont.lua") then
+        local MCText = loadstring(readfile(".MCFont.lua"))()
+        MCText(text, 3, 1, Color3.fromRGB(63, 63, 63), UDim2.new(0.5, 0, 0.5, 0), bt, Vector2.new(0.5, 0.5))
+        MCText(_text, 3, 1, Color3.fromRGB(63, 63, 63), UDim2.new(0.5, 0, 0.6, 0), bb, Vector2.new(0.5, 0.5))
+    else
+output = text:gsub("<[1-9a-d]>", "")
+_output = _text:gsub("<[1-9a-d]>", "")
+        bt.Text = output
+        bb.Text = _output
+    end
+end
