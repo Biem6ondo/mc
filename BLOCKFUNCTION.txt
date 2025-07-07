@@ -1,0 +1,1252 @@
+local ver = 15
+
+print("Module: Block Function Loaded! " .. ver)
+
+-- Cloud
+local minecraft = workspace:WaitForChild("Minecraft", 9e9)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+
+local CloudFolder = Instance.new("Folder", workspace)
+CloudFolder.Name = "MinecraftClouds"
+
+local cloudToggle = Instance.new("BoolValue")
+cloudToggle.Name = "RenderCloud"
+cloudToggle.Value = true
+cloudToggle.Parent = CloudFolder
+
+local maxClouds = 12
+local cloudHeight = 300
+local createdClouds = {}
+local cloudSpeed = 0.03
+local cloudSize = Vector3.new(70, 10, 70)
+
+local function createCloud(centerPos)
+	if not cloudToggle.Value then return end
+
+	local cloud = Instance.new("Model", CloudFolder)
+	cloud.Name = "Cloud"
+
+	local blocks = {}
+	local numBlocks = math.random(3, 6)
+
+	for i = 1, numBlocks do
+		local offsetX = math.random(-1, 1) * cloudSize.X
+		local offsetZ = math.random(-1, 1) * cloudSize.Z
+		local key = offsetX .. "," .. offsetZ
+		if not blocks[key] then
+			blocks[key] = true
+
+			local part = Instance.new("Part")
+			part.Anchored = true
+			part.CanCollide = false
+			part.CastShadow = false
+			part.Size = cloudSize
+			part.Position = centerPos + Vector3.new(offsetX, 0, offsetZ)
+			part.Material = Enum.Material.SmoothPlastic
+			part.Color = Color3.fromRGB(240, 240, 240)
+			part.Parent = cloud
+
+			if not cloud.PrimaryPart then
+				cloud.PrimaryPart = part
+			end
+		end
+	end
+
+	table.insert(createdClouds, cloud)
+end
+
+local function isTooClose(pos)
+	for _, cloud in pairs(createdClouds) do
+		if cloud and cloud.PrimaryPart then
+			if (cloud.PrimaryPart.Position - pos).Magnitude < 200 then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+RunService.Heartbeat:Connect(function()
+	local camPos = camera.CFrame.Position
+
+	if not cloudToggle.Value then
+		for i = #createdClouds, 1, -1 do
+			local cloud = createdClouds[i]
+			if cloud then
+				cloud:Destroy()
+				table.remove(createdClouds, i)
+			end
+		end
+		return
+	end
+
+	for i = #createdClouds, 1, -1 do
+		local cloud = createdClouds[i]
+		if cloud and cloud.PrimaryPart then
+			local currentCFrame = cloud:GetPrimaryPartCFrame()
+			local newCFrame = currentCFrame + Vector3.new(cloudSpeed, 0, 0)
+			cloud:SetPrimaryPartCFrame(newCFrame)
+
+			if (cloud.PrimaryPart.Position - camPos).Magnitude > 1000 then
+				cloud:Destroy()
+				table.remove(createdClouds, i)
+			end
+		end
+	end
+
+	if #createdClouds < maxClouds then
+		local angle = math.random() * math.pi * 2
+		local radius = math.random(200, 400)
+		local pos = camPos + Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+		pos = Vector3.new(pos.X, cloudHeight, pos.Z)
+
+		if not isTooClose(pos) then
+			createCloud(pos)
+		end
+	end
+end)
+
+-- Sand
+
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+local function getGroundInfo(part, rayParams)
+	local ray = workspace:Raycast(part.Position, Vector3.new(0, -500, 0), rayParams)
+	if ray and ray.Instance then
+		return ray.Instance, ray.Position.Y + ray.Instance.Size.Y / 4 + part.Size.Y / 4
+	else
+		return nil, -500
+	end
+end
+
+local function addClickDetector(part)
+	if not part:FindFirstChildOfClass("ClickDetector") then
+		local cd = Instance.new("ClickDetector", part)
+		cd.MouseClick:Connect(function()
+			part:Destroy()
+		end)
+	end
+end
+
+local function tweenDrop(part)
+	addClickDetector(part)
+
+	local rayParams = RaycastParams.new()
+	rayParams.FilterDescendantsInstances = {part}
+	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+	local tween
+	local function startTween()
+		local hit, targetY = getGroundInfo(part, rayParams)
+		local distance = part.Position.Y - targetY
+
+		if distance > 0 then
+			part.CanCollide = false
+
+			local tweenInfo = TweenInfo.new(distance / 30, Enum.EasingStyle.Linear)
+			local goal = {Position = Vector3.new(part.Position.X, targetY, part.Position.Z)}
+			tween = TweenService:Create(part, tweenInfo, goal)
+			tween:Play()
+		end
+	end
+
+	startTween()
+
+	local conn
+	conn = RunService.Heartbeat:Connect(function()
+		if not part or not part.Parent then
+			conn:Disconnect()
+			return
+		end
+
+		local hit, targetY = getGroundInfo(part, rayParams)
+		local dist = part.Position.Y - targetY
+
+		if dist <= 0.01 then
+			if tween then tween:Cancel() end
+			part.Position = Vector3.new(part.Position.X, targetY, part.Position.Z)
+			part.CanCollide = true
+
+			if hit and hit:IsA("BasePart") then
+				return
+			else
+				startTween()
+			end
+		elseif not tween or tween.PlaybackState ~= Enum.PlaybackState.Playing then
+			startTween()
+		end
+	end)
+end
+
+minecraft.ChildAdded:Connect(function(child)
+	task.wait()
+	if child:IsA("BasePart") and child.Name == "Sand" then
+		tweenDrop(child)
+	end
+end)
+
+for _, part in ipairs(minecraft:GetDescendants()) do
+	if part:IsA("BasePart") and part.Name == "Sand" then
+		tweenDrop(part)
+	end
+end
+
+minecraft.ChildAdded:Connect(function(glow)
+task.wait()
+if glow:IsA("BasePart") and glow.Name == "Glowstone" then
+local light = Instance.new("PointLight")
+light.Brightness = 2
+light.Range = 18
+light.Parent = glow
+end
+end)
+
+local lighting = game:GetService("Lighting")
+
+task.spawn(function() 
+while true do
+	task.wait(0.5)
+lighting.Brightness = 1
+	local time = lighting.ClockTime
+
+	if time >= 6 and time <= 18 then
+		lighting.FogColor = Color3.new(1, 1, 1)
+lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
+	else
+		lighting.FogColor = Color3.new(0, 0, 0)
+lighting.OutdoorAmbient = Color3.new(0, 0, 0)
+	end
+end
+end)
+
+-- Test
+
+local Tool = Instance.new("Tool", game.Players.LocalPlayer.Backpack)
+Tool.RequiresHandle = false
+Tool.Name = "Wooden_Hoe_Item"
+Tool.ToolTip = "Wooden Hoe"
+
+local Player = game.Players.LocalPlayer
+local Mouse = Player:GetMouse()
+
+local textureFolder = ".TexturePack"
+local farmlandName = "FarmlandDry.png"
+local dirtName = "Dirt_Face1.png"
+local farmlandPath = textureFolder .. "/" .. farmlandName
+local dirtPath = textureFolder .. "/" .. dirtName
+local farmlandURL = "https://static.wikia.nocookie.net/minecraft_gamepedia/images/6/60/Farmland_%28dry_texture%29_JE2_BE2.png/revision/latest?cb=20201006055318"
+
+if not isfolder(textureFolder) then
+    makefolder(textureFolder)
+end
+
+if not isfile(farmlandPath) then
+    writefile(farmlandPath, game:HttpGet(farmlandURL))
+end
+
+local faces = {
+    Top = Enum.NormalId.Top,
+    Bottom = Enum.NormalId.Bottom,
+    Left = Enum.NormalId.Left,
+    Right = Enum.NormalId.Right,
+    Front = Enum.NormalId.Front,
+    Back = Enum.NormalId.Back,
+}
+
+local function onActivate()
+    local target = Mouse.Target
+    if target and target:IsA("BasePart") and (target.Name == "Grass" or target.Name == "Dirt") then
+        target.Size = Vector3.new(4, 3.7, 4)
+target.Position = target.Position - Vector3.new(0, 0.15, 0)
+target.Name = "Test_Block_Changed_1"
+        for _, d in ipairs(target:GetChildren()) do
+            if d:IsA("Decal") then
+                d:Destroy()
+            end
+        end
+        local decalTop = Instance.new("Decal")
+        decalTop.Face = faces.Top
+        decalTop.Texture = getcustomasset(farmlandPath)
+        decalTop.Parent = target
+        for faceName, faceEnum in pairs(faces) do
+            if faceEnum ~= Enum.NormalId.Top then
+                local decal = Instance.new("Decal")
+                decal.Face = faceEnum
+                decal.Texture = getcustomasset(dirtPath)
+                decal.Parent = target
+            end
+        end
+    end
+end
+
+Tool.Activated:Connect(onActivate)
+
+-- Barrier
+
+local folderPath = ".TexturePack"
+local fileName = "Barrier.png"
+local fullPath = folderPath .. "/" .. fileName
+
+if not isfolder(folderPath) then
+    makefolder(folderPath)
+end
+
+if not isfile(fullPath) then
+    writefile(fullPath, game:HttpGet("https://static.wikia.nocookie.net/minecraft/images/8/8d/BarrierNew.png/revision/latest?cb=20190830230156"))
+end
+
+local minecraft = workspace:FindFirstChild("Minecraft")
+if not minecraft then return end
+
+local barrierFolder = Instance.new("Folder")
+barrierFolder.Name = "Barrier_Folder"
+barrierFolder.Parent = minecraft
+
+local function addBillboard(part)
+    if not part:IsA("BasePart") then return end
+    if part:FindFirstChild("BarrierGui") then return end
+
+    part.Transparency = 1
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "BarrierGui"
+    billboard.Adornee = part
+    billboard.Size = UDim2.new(4, 0, 4, 0)
+    billboard.AlwaysOnTop = false
+    billboard.Enabled = false
+    billboard.Parent = part
+
+    local img = Instance.new("ImageLabel")
+    img.Size = UDim2.new(1, 0, 1, 0)
+    img.BackgroundTransparency = 1
+    img.Image = getcustomasset(fullPath)
+    img.Name = "Barrier"
+    img.Parent = billboard
+
+    task.defer(function()
+        part.Parent = barrierFolder
+    end)
+end
+
+local parts = {}
+for _, part in pairs(minecraft:GetDescendants()) do
+    if part:IsA("BasePart") and part.Name == "Barrier" then
+        table.insert(parts, part)
+    end
+end
+
+coroutine.wrap(function()
+    for i = 1, #parts, 100 do
+        for j = i, math.min(i + 99, #parts) do
+            task.defer(addBillboard, parts[j])
+        end
+        task.wait()
+    end
+end)()
+
+minecraft.DescendantAdded:Connect(function(desc)
+    if desc:IsA("BasePart") and desc.Name == "Barrier" then
+        addBillboard(desc)
+    end
+end)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local backpack = player:WaitForChild("Backpack")
+
+local folderPath = workspace:WaitForChild("Minecraft"):WaitForChild("Barrier_Folder")
+
+RunService.RenderStepped:Connect(function()
+    local hasBarrierTool = backpack:FindFirstChild("Barrier_Item") ~= nil
+
+    for _, descendant in pairs(folderPath:GetDescendants()) do
+        if descendant:IsA("BillboardGui") then
+            descendant.Enabled = not hasBarrierTool
+        end
+    end
+end)
+
+-- Barrier part 2
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+RunService.Heartbeat:Connect(function()
+		for _, t in ipairs(minecraft:WaitForChild("Barrier_Folder"):GetChildren()) do
+			task.wait()
+			if t:IsA("BasePart") and t.Name == "Barrier" then
+				t.Transparency = 1
+
+				local rayOrigin = t.Position
+				local rayDirection = Vector3.new(0, -4, 0)
+				local rayParams = RaycastParams.new()
+				rayParams.FilterDescendantsInstances = {minecraft:WaitForChild("Barrier_Folder")}
+				rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+				local result = workspace:Raycast(rayOrigin, rayDirection, rayParams)
+
+				if result and result.Instance then
+					local partBelow = result.Instance
+					if partBelow:IsA("BasePart") then
+						partBelow.Transparency = 0
+						
+						for _, decal in ipairs(partBelow:GetDescendants()) do
+							if decal:IsA("Decal") then
+								decal.Transparency = 0
+							end
+						end
+					end
+				end
+			end
+		end
+end)
+
+-- Anti Death From Void
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+
+local folder = Instance.new("Folder", workspace)
+folder.Name = "VoidTeleportParts"
+
+local range = 5
+for x = -range, range do
+	for z = -range, range do
+		local p = Instance.new("Part")
+		p.Size = Vector3.new(2048, 4, 2048)
+		p.Anchored = true
+		p.Transparency = 1
+		p.CanCollide = true
+		p.Position = Vector3.new(x * 2048, -400, z * 2048)
+		p.Parent = folder
+
+		p.Touched:Connect(function(hit)
+			local toucher = hit:FindFirstAncestorOfClass("Model")
+			if toucher and toucher:FindFirstChild("Humanoid") and toucher == player.Character then
+				local root = toucher:FindFirstChild("HumanoidRootPart")
+				if root then
+if _G.sendMessage then
+_G.sendMessage(game.Players.LocalPlayer.Name .. " fell out of the world", Color3.fromRGB(255, 255, 255))
+end
+for i = 1, 100 do
+					root.CFrame = CFrame.new(0, math.random(40, 100), 0)
+task.wait(0.02)
+end
+				end
+			end
+		end)
+	end
+end
+
+-- Cannot Place < -4
+local Minecraft = workspace:WaitForChild("Minecraft")
+
+local debounce = {}
+
+Minecraft.DescendantAdded:Connect(function(obj)
+	if obj:IsA("BasePart") then
+		task.defer(function()
+			if debounce[obj] then return end
+			debounce[obj] = true
+			if obj:IsDescendantOf(Minecraft) and obj.Position.Y < -3 then
+				obj:Destroy()
+			end
+		end)
+	end
+end)
+
+-- Fire
+
+local Minecraft = workspace:WaitForChild("Minecraft")
+local http = game:GetService("HttpService")
+
+if not isfile(".TexturePack/fire_layer_0.png") then
+writefile(".TexturePack/fire_layer_0.png", game:HttpGet("https://i.postimg.cc/JtV1Zf5G/fire-layer-0.png"))
+end
+if not isfile(".TexturePack/fire_layer_1.png") then
+writefile(".TexturePack/fire_layer_1.png", game:HttpGet("https://i.postimg.cc/4xGcTqRf/fire-layer-1.png"))
+end
+if not isfile(".TexturePack/FireSpawn.ogg") then
+writefile(".TexturePack/FireSpawn.ogg", game:HttpGet("https://files.catbox.moe/1obyxy.ogg"))
+end
+if not isfile(".TexturePack/fire_layer.mcmeta") then
+writefile(".TexturePack/fire_layer.mcmeta", [[
+{
+"animation": {
+"frametime": 2
+}
+}
+]])
+end
+if not isfile(".TexturePack/fire_sound.ogg") then
+writefile(".TexturePack/fire_sound.ogg", game:HttpGet("https://files.catbox.moe/l82h12.ogg"))
+end
+
+local tex0 = getcustomasset(".TexturePack/fire_layer_0.png")
+local tex1 = getcustomasset(".TexturePack/fire_layer_1.png")
+local soundAsset = getcustomasset(".TexturePack/fire_sound.ogg")
+local soundSpawn = getcustomasset(".TexturePack/FireSpawn.ogg")
+
+local delay = 0.1
+local success, data = pcall(function()
+return http:JSONDecode(readfile(".TexturePack/fire_layer.mcmeta"))
+end)
+if success and data.animation and tonumber(data.animation.frametime) then
+delay = tonumber(data.animation.frametime) * 0.05
+end
+
+local excludedFaces = {
+[Enum.NormalId.Top] = true,
+[Enum.NormalId.Bottom] = true,
+}
+
+local totalFrames = 32
+local frameHeight = 16
+
+local folder = Minecraft:FindFirstChild("Fire_Folder") or Instance.new("Folder", Minecraft)
+folder.Name = "Fire_Folder"
+
+Minecraft.DescendantAdded:Connect(function(child)
+if child:IsA("Part") and child.Name == "Fire" then
+task.wait()
+child.Parent = folder
+task.spawn(function()
+while child and child.Parent do
+child.Transparency = 1
+child.CanCollide = false
+task.wait(0.5)
+end
+end)
+
+local light = Instance.new("PointLight", child)
+light.Color = Color3.new(1, 0.4, 0.1)
+light.Brightness = 2
+light.Range = 10
+
+local fi = Instance.new("Sound", child)
+fi.SoundId = soundSpawn
+fi.Looped = false
+fi.Volume = 1
+fi:Play()
+
+local fireSound = Instance.new("Sound", child)      
+fireSound.SoundId = soundAsset      
+fireSound.Looped = false      
+fireSound.Volume = 1      
+task.spawn(function()      
+	while child and child.Parent do      
+		fireSound:Play()      
+		task.wait(math.random(2, 3))      
+	end      
+end)      
+
+local r = 5      
+local cx, cy, cz = child.Position.X, child.Position.Y, child.Position.Z      
+
+local offsets = {      
+	{Vector3.new(0,4,4), Vector3.new(cx+1.5,cy,cz), Vector3.new(0,0,r)},      
+	{Vector3.new(0,4,4), Vector3.new(cx-1.5,cy,cz), Vector3.new(0,0,r)},      
+	{Vector3.new(0,4,4), Vector3.new(cx-1.85,cy,cz), Vector3.new(0,0,-r)},      
+	{Vector3.new(0,4,4), Vector3.new(cx-0.15,cy,cz), Vector3.new(0,0,-r)},      
+	{Vector3.new(4,4,0), Vector3.new(cx,cy,cz+1.85), Vector3.new(-r,0,0)},      
+	{Vector3.new(4,4,0), Vector3.new(cx,cy,cz+0.15), Vector3.new(-r,0,0)},      
+	{Vector3.new(4,4,0), Vector3.new(cx,cy,cz-1.85), Vector3.new(r,0,0)},      
+	{Vector3.new(4,4,0), Vector3.new(cx,cy,cz-0.15), Vector3.new(-r,0,0)},      
+}      
+
+local imageList = {}      
+
+for _, v in ipairs(offsets) do      
+	local a = Instance.new("Part", child)      
+	a.Size, a.Position, a.Rotation = unpack(v)      
+	a.Anchored = true      
+	a.Transparency = 1      
+	a.CanCollide = false      
+a.Name = "1259851374"
+
+	for _, face in ipairs(Enum.NormalId:GetEnumItems()) do      
+		if not excludedFaces[face] then      
+			local gui = Instance.new("SurfaceGui", a)      
+			gui.Face = face      
+			gui.AlwaysOnTop = false      
+			gui.LightInfluence = 0      
+
+			local img0 = Instance.new("ImageLabel", gui)      
+			img0.Size = UDim2.new(1, 0, 1, 0)      
+			img0.Position = UDim2.new(0, 0, 0, 0)      
+			img0.BackgroundTransparency = 1      
+			img0.Image = tex0      
+			img0.ScaleType = Enum.ScaleType.Crop      
+			img0.ResampleMode = Enum.ResamplerMode.Pixelated      
+
+			local img1 = img0:Clone()      
+			img1.Image = tex1      
+			img1.Parent = gui      
+
+			table.insert(imageList, {img0, img1})      
+		end      
+	end      
+end      
+
+task.spawn(function()      
+	while child and child.Parent do      
+		for i = 0, totalFrames - 1 do      
+			local offset = Vector2.new(0, i * frameHeight)      
+			local size = Vector2.new(16, 16)      
+			for _, pair in ipairs(imageList) do      
+				local img0, img1 = unpack(pair)      
+				img0.ImageRectOffset = offset      
+				img0.ImageRectSize = size      
+				img1.ImageRectOffset = offset      
+				img1.ImageRectSize = size      
+			end      
+			task.wait(delay)      
+		end      
+	end      
+end)
+
+end
+
+end)
+
+local FireFolder = workspace:WaitForChild("Minecraft"):WaitForChild("Fire_Folder")
+
+local offsets = {
+	Vector3.new(4, 0, 0),
+	Vector3.new(-4, 0, 0),
+	Vector3.new(0, 4, 0),
+	Vector3.new(0, -4, 0),
+	Vector3.new(0, 0, 4),
+	Vector3.new(0, 0, -4),
+}
+
+task.spawn(function()
+	while true do
+		for _, fire in pairs(FireFolder:GetDescendants()) do
+			if fire:IsA("Part") and fire.Name == "Fire" then
+				for _, offset in ipairs(offsets) do
+					local checkPos = fire.Position + offset
+					for _, p in ipairs(workspace:GetPartBoundsInBox(CFrame.new(checkPos), fire.Size)) do
+						if p:IsA("Part") and p.Name ~= "1259851374" and p ~= fire then
+							for _, d in ipairs(p:GetDescendants()) do
+								if d:IsA("Decal") then
+									d.Transparency = 0
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+		task.wait(1)
+	end
+end)
+
+-- Do it Again...
+
+local url = "https://static.wikia.nocookie.net/minecraft_gamepedia/images/5/5d/Grass_%28item%29.png/revision/latest?cb=20190826122346"
+local path = ".TexturePack/grass_item.png"
+if not isfile(path) then
+	writefile(path, game:HttpGet(url))
+end
+local asset = getcustomasset(path)
+
+local Minecraft = workspace:WaitForChild("Minecraft")
+local cam = workspace.CurrentCamera
+
+local AllLowerGrass = {}
+local SubGrassParts = {}
+
+local minRenderDistance = 50
+local maxRenderDistanceLimit = 500
+local maxRenderDistance = 200
+
+local function isValidUnder(part)
+	local region = Region3.new(part.Position - Vector3.new(1, 3, 1), part.Position + Vector3.new(1, -1, 1))
+	local parts = workspace:FindPartsInRegion3WithIgnoreList(region, {part}, 10)
+	for _, p in ipairs(parts) do
+		if p:IsDescendantOf(Minecraft) and (p.Name == "Grass" or p.Name == "Dirt") then
+			return true
+		end
+	end
+	return false
+end
+
+local function removeLowerGrass(targetPart)
+	for i = #AllLowerGrass, 1, -1 do
+		if AllLowerGrass[i] == targetPart then
+			table.remove(AllLowerGrass, i)
+		end
+	end
+	for i = #SubGrassParts, 1, -1 do
+		if SubGrassParts[i].target == targetPart then
+			for _, p in ipairs(SubGrassParts[i].parts) do
+				p.part:Destroy()
+			end
+			table.remove(SubGrassParts, i)
+		end
+	end
+	targetPart:Destroy()
+end
+
+local function createSurfaceGui(face)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = face
+	gui.AlwaysOnTop = false
+	gui.LightInfluence = 1
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 50
+	gui.Enabled = false
+
+	local img = Instance.new("ImageLabel")
+	img.Image = asset
+	img.Size = UDim2.new(1, 0, 1, 0)
+	img.BackgroundTransparency = 1
+	img.BorderSizePixel = 0
+	img.Parent = gui
+
+	return gui
+end
+
+local function createSubParts(targetPart)
+	if not targetPart or not targetPart:IsDescendantOf(workspace) then return end
+	if table.find(AllLowerGrass, targetPart) then return end
+	if not isValidUnder(targetPart) then
+		targetPart:Destroy()
+		return
+	end
+
+	table.insert(AllLowerGrass, targetPart)
+	targetPart.Transparency = 1
+	targetPart.CanCollide = false
+
+	local subParts = {}
+
+	local function make(rotationY)
+		local part = Instance.new("Part")
+		part.Size = Vector3.new(0, 4, 4)
+		part.Anchored = true
+		part.CanCollide = false
+part.Transparency = 1
+		part.Color = Color3.new(1, 1, 1)
+		part.Position = targetPart.Position
+		part.Rotation = Vector3.new(0, rotationY, 0)
+		part.Name = "KING"
+		part.Parent = targetPart
+
+		local guis = {
+			createSurfaceGui(Enum.NormalId.Right),
+			createSurfaceGui(Enum.NormalId.Left)
+		}
+		for _, gui in ipairs(guis) do
+			gui.Parent = part
+		end
+
+		table.insert(subParts, {part = part, guis = guis})
+	end
+
+	make(45)
+	make(135)
+
+	table.insert(SubGrassParts, {target = targetPart, parts = subParts})
+end
+
+Minecraft.DescendantAdded:Connect(function(desc)
+	if desc:IsA("Part") and desc.Name == "Lower_Grass" then
+		repeat task.wait() until desc:IsDescendantOf(Minecraft)
+		createSubParts(desc)
+	end
+end)
+
+Minecraft.DescendantRemoving:Connect(function(desc)
+	if not desc:IsA("Part") then return end
+	if desc.Name ~= "Grass" and desc.Name ~= "Dirt" then return end
+	local region = Region3.new(desc.Position + Vector3.new(-2, 1, -2), desc.Position + Vector3.new(2, 5, 2))
+	local parts = workspace:FindPartsInRegion3WithIgnoreList(region, {}, math.huge)
+	for _, part in ipairs(parts) do
+		if part:IsA("Part") and part.Name == "Lower_Grass" and table.find(AllLowerGrass, part) then
+			if not isValidUnder(part) then
+				removeLowerGrass(part)
+			end
+		end
+	end
+end)
+
+task.defer(function()
+	local count = 0
+	for _, desc in ipairs(Minecraft:GetDescendants()) do
+		if desc:IsA("Part") and desc.Name == "Lower_Grass" then
+			createSubParts(desc)
+			count += 1
+			if count >= 200 then
+				count = 0
+				task.wait()
+			end
+		end
+	end
+end)
+
+task.defer(function()
+	cam:GetPropertyChangedSignal("CFrame"):Connect(function()
+		local camCFrame = cam.CFrame
+		local camPos = camCFrame.Position
+		local camLook = camCFrame.LookVector
+		for _, item in ipairs(SubGrassParts) do
+			local target = item.target
+			if not target:IsDescendantOf(workspace) then continue end
+			local toTarget = target.Position - camPos
+			local dist = toTarget.Magnitude
+			local dot = camLook:Dot(toTarget.Unit)
+			local visible = dist <= maxRenderDistance and dot > 0.5
+			for _, partData in ipairs(item.parts) do
+				for _, gui in ipairs(partData.guis) do
+					gui.Enabled = visible
+				end
+			end
+		end
+	end)
+end)
+
+task.defer(function()
+	while task.wait(1.5) do
+		for i = #AllLowerGrass, 1, -1 do
+			local part = AllLowerGrass[i]
+			if part and part:IsDescendantOf(workspace) then
+				if not isValidUnder(part) then
+					removeLowerGrass(part)
+				end
+			else
+				table.remove(AllLowerGrass, i)
+			end
+		end
+	end
+end)
+
+task.spawn(function()
+	local last = tick()
+	while true do
+		local now = tick()
+		local delta = now - last
+		last = now
+		local fps = 1 / delta
+		if fps < 20 and maxRenderDistance > minRenderDistance then
+			maxRenderDistance -= 1
+		elseif fps >= 20 and maxRenderDistance < maxRenderDistanceLimit then
+			maxRenderDistance += 1
+		end
+		task.wait()
+	end
+end)
+-- 2
+
+local function applyChanges(part)
+	if part.Name == "Leaf" then
+		part.Transparency = 1
+	elseif part.Name == "Structure_Void" then
+		part.Transparency = 1
+		part.CanCollide = false
+	elseif part.Name == "White_Glass" then
+		part.Transparency = 0.9
+		part.Color = Color3.new(1, 1, 1)
+	end
+end
+
+local function waitForSixDecals(part)
+	task.spawn(function()
+		while true do
+			local count = 0
+			for _, child in ipairs(part:GetChildren()) do
+				if child:IsA("Decal") then
+					count += 1
+				end
+			end
+			if count == 6 then
+				applyChanges(part)
+				break
+			end
+			task.wait()
+		end
+	end)
+end
+
+local function processPart(part)
+	if part:IsA("BasePart") and (part.Name == "Leaf" or part.Name == "Structure_Void" or part.Name == "White_Glass") then
+		waitForSixDecals(part)
+	end
+end
+
+for _, descendant in ipairs(Minecraft:GetDescendants()) do
+	processPart(descendant)
+end
+
+Minecraft.DescendantAdded:Connect(function(descendant)
+	task.wait()
+	processPart(descendant)
+end)
+
+
+-- Mobile Touch
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local SoundService = game:GetService("SoundService")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+local soundFolderName = ".MCSFX"
+if not isfolder(soundFolderName) then
+    makefolder(soundFolderName)
+end
+
+local soundURLs = {
+    "https://files.catbox.moe/8zznok.ogg",
+    "https://files.catbox.moe/4587kz.ogg",
+    "https://files.catbox.moe/91eal7.ogg",
+    "https://files.catbox.moe/142gl7.ogg",
+}
+
+local soundPaths = {}
+
+for i, url in ipairs(soundURLs) do
+    local fileName = soundFolderName.."/sound"..i..".ogg"
+    if not isfile(fileName) then
+        writefile(fileName, game:HttpGet(url))
+    end
+    table.insert(soundPaths, getcustomasset(fileName))
+end
+
+if not isfolder(".TexturePack") then
+    makefolder(".TexturePack")
+end
+
+local imageName = "TouchImage"
+local imagePath = ".TexturePack/"..imageName..".png"
+local imageURL = "https://i.postimg.cc/26Hx6Fbg/Background-Eraser-20250618-204319148.png"
+
+if not isfile(imagePath) then
+    writefile(imagePath, game:HttpGet(imageURL))
+end
+
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.Name = "TouchImageGUI"
+gui.ResetOnSpawn = false
+
+local img = Instance.new("ImageLabel")
+img.Size = UDim2.new(0, 160, 0, 160)
+img.BackgroundTransparency = 1
+img.Image = getcustomasset(imagePath)
+img.Visible = false
+img.AnchorPoint = Vector2.new(0.5, 0.5)
+img.ZIndex = 9999
+img.Parent = gui
+
+local function playRandomSound()
+    local randomPath = soundPaths[math.random(1, #soundPaths)]
+    local sound = Instance.new("Sound")
+    sound.SoundId = randomPath
+    sound.Volume = 1
+    sound.PlayOnRemove = true
+    sound.Parent = SoundService
+    sound:Destroy()
+end
+
+if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+    local touchInput = nil
+
+    UserInputService.TouchStarted:Connect(function(input, gameProcessed)
+        if not gameProcessed and not touchInput then
+            local part = Workspace:FindPartOnRayWithIgnoreList(Ray.new(Workspace.CurrentCamera.CFrame.Position, (Workspace.CurrentCamera:ScreenPointToRay(input.Position.X, input.Position.Y).Direction * 1000)), {player.Character})
+            if not part then
+                playRandomSound()
+            end
+
+            touchInput = input
+            img.Position = UDim2.new(0, input.Position.X, 0, input.Position.Y)
+            img.Visible = true
+        end
+    end)
+
+    UserInputService.TouchMoved:Connect(function(input)
+        if input == touchInput then
+            img.Position = UDim2.new(0, input.Position.X, 0, input.Position.Y)
+        end
+    end)
+
+    UserInputService.TouchEnded:Connect(function(input)
+        if input == touchInput then
+            touchInput = nil
+            img.Visible = false
+        end
+    end)
+end
+
+--  Rain
+
+writefile(".TexturePack/rain.png", game:HttpGet("https://i.postimg.cc/85kkb40S/rain.png"))
+
+local rainUrls = {
+    "https://files.catbox.moe/clj1b6.ogg",
+    "https://files.catbox.moe/6tuhcz.ogg",
+    "https://files.catbox.moe/rlrnuh.ogg",
+    "https://files.catbox.moe/mhfare.ogg",
+    "https://files.catbox.moe/bg8130.ogg",
+    "https://files.catbox.moe/vnxlqm.ogg",
+    "https://files.catbox.moe/5fxsz2.ogg"
+}
+
+for i, url in ipairs(rainUrls) do
+    local path = ".TexturePack/rain" .. i .. ".ogg"
+    if not isfile(path) then
+        writefile(path, game:HttpGet(url))
+    end
+end
+
+local soundIds = {}
+for i = 1, 7 do
+    soundIds[i] = getcustomasset(".TexturePack/rain" .. i .. ".ogg")
+end
+
+local SoundService = game:GetService("SoundService")
+local RunService = game:GetService("RunService")
+local camera = workspace.CurrentCamera
+
+local RAIN_PARTICLE_TEXTURE = getcustomasset(".TexturePack/rain.png")
+local RAIN_AMOUNT = 400
+local RAIN_RADIUS = 15
+local FALL_SPEED = -45
+
+local RainFolder = Instance.new("Folder", workspace)
+RainFolder.Name = "MinecraftRain"
+
+local IsRaining = workspace:FindFirstChild("IsRaining")
+if not IsRaining then
+	IsRaining = Instance.new("BoolValue")
+	IsRaining.Name = "IsRaining"
+	IsRaining.Value = false
+	IsRaining.Parent = workspace
+end
+
+task.spawn(function()
+	while true do
+		if IsRaining.Value then
+			local s = Instance.new("Sound")
+			s.SoundId = soundIds[math.random(1, #soundIds)]
+			s.Volume = 1
+			s.Parent = SoundService
+			s:Play()
+			game:GetService("Debris"):AddItem(s, 3)
+		end
+		task.wait(math.random(0.15, 0.35))
+	end
+end)
+
+local function createRainParticle()
+	local part = Instance.new("Part")
+	part.Size = Vector3.new(0.4, 4, 0.4)
+	part.Anchored = true
+	part.CanCollide = false
+	part.Transparency = 1
+	part.Parent = RainFolder
+
+	local rain = Instance.new("BillboardGui")
+	rain.Size = UDim2.new(2, 0, 6, 0)
+	rain.AlwaysOnTop = true
+	rain.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	rain.Parent = part
+
+	local img = Instance.new("ImageLabel")
+	img.Image = RAIN_PARTICLE_TEXTURE
+	img.BackgroundTransparency = 1
+	img.Size = UDim2.new(1, 0, 1, 0)
+	img.ImageColor3 = Color3.fromRGB(180, 210, 255)
+	img.ImageTransparency = 0.02
+	img.ScaleType = Enum.ScaleType.Crop
+	img.Parent = rain
+
+	return part
+end
+
+local rainParts = {}
+for i = 1, RAIN_AMOUNT do
+	table.insert(rainParts, createRainParticle())
+end
+
+local lastCamPos = camera.CFrame.Position
+local HasRoof = false
+
+task.spawn(function()
+	while true do
+		local camPos = camera.CFrame.Position
+		local regionSize = Vector3.new(RAIN_RADIUS * 2, 10, RAIN_RADIUS * 2)
+		local regionCenter = camPos + Vector3.new(0, 10, 0)
+		local region = Region3.new(regionCenter - regionSize / 2, regionCenter + regionSize / 2)
+		local parts = workspace:FindPartsInRegion3WithIgnoreList(region, {RainFolder, camera}, 10)
+		HasRoof = false
+		for _, part in ipairs(parts) do
+			if part.Transparency < 1 and part.CanCollide then
+				HasRoof = true
+				break
+			end
+		end
+		task.wait(0.3)
+	end
+end)
+
+RunService.Heartbeat:Connect(function(dt)
+	if not IsRaining.Value or HasRoof then
+		for _, part in ipairs(rainParts) do
+			part.Transparency = 1
+			local gui = part:FindFirstChildOfClass("BillboardGui")
+			if gui then gui.Enabled = false end
+		end
+		return
+	end
+
+	local camPos = camera.CFrame.Position
+	local camDelta = camPos - lastCamPos
+	lastCamPos = camPos
+
+	for _, part in ipairs(rainParts) do
+		local gui = part:FindFirstChildOfClass("BillboardGui")
+		if gui then gui.Enabled = true end
+
+		if part.Position.Y < camPos.Y - 10 then
+			local offset = Vector3.new(
+				math.random() * RAIN_RADIUS * 2 - RAIN_RADIUS,
+				math.random(20, 35),
+				math.random() * RAIN_RADIUS * 2 - RAIN_RADIUS
+			)
+			part.Position = camPos + offset
+		else
+			part.Position = part.Position + camDelta + Vector3.new(0, FALL_SPEED * dt, 0)
+		end
+	end
+end)
+
+-- Test
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local root = character:WaitForChild("HumanoidRootPart")
+local camera = workspace.CurrentCamera
+
+local recentCount = 0
+local skipMode = false
+local ignoredOakLogs = {}
+
+local rotationModes = {
+	Oak_Log = "XYZ",
+	Pumpkin = "Y",
+}
+
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		skipMode = recentCount > 5
+		recentCount = 0
+	end
+end)
+
+local function getBlockRotation(name)
+	local look = camera.CFrame.LookVector
+	local absLook = Vector3.new(math.abs(look.X), math.abs(look.Y), math.abs(look.Z))
+	local mode = rotationModes[name]
+
+	if mode == "Y" then
+		local raw = math.deg(math.atan2(look.X, look.Z))
+		local fixed = math.floor((raw + 45) / 90) * 90 % 360
+		return Vector3.new(0, fixed, 0)
+	elseif mode == "XYZ" then
+		if absLook.Y > absLook.X and absLook.Y > absLook.Z then
+			return Vector3.new(0, 0, 0)
+		elseif absLook.X > absLook.Z then
+			return Vector3.new(0, 0, 90)
+		else
+			return Vector3.new(90, 0, 0)
+		end
+	end
+
+	return Vector3.zero
+end
+
+local function hasSixDecalsWithTexture(part)
+	local count = 0
+	for _, d in ipairs(part:GetChildren()) do
+		if d:IsA("Decal") and d.Texture ~= "" then
+			count += 1
+		end
+	end
+	return count == 6
+end
+
+local function hideAllDecals(part)
+	for _, d in ipairs(part:GetChildren()) do
+		if d:IsA("Decal") then
+			d.Transparency = 1
+		end
+	end
+end
+
+local function onPartAdded(part)
+	if not part:IsA("BasePart") then return end
+	if not rotationModes[part.Name] then
+		recentCount += 1
+		return
+	end
+
+	if skipMode or ignoredOakLogs[part] then
+		ignoredOakLogs[part] = true
+		return
+	end
+
+	task.defer(function()
+		repeat task.wait() until hasSixDecalsWithTexture(part)
+		hideAllDecals(part)
+		if (part.Position - root.Position).Magnitude > 40 then return end
+		if part.Size == Vector3.new(4, 4, 4) and part.Rotation == Vector3.zero then
+			local rot = getBlockRotation(part.Name)
+
+			local newPart = Instance.new("Part")
+			newPart.Size = part.Size
+			newPart.Anchored = true
+			newPart.CanCollide = false
+			newPart.CanTouch = false
+			newPart.CanQuery = false
+			newPart.Transparency = 1
+			newPart.CFrame = part.CFrame
+			newPart.Rotation = rot
+			newPart.Name = "Rotated"
+
+			for _, d in ipairs(part:GetChildren()) do
+				if d:IsA("Decal") and d.Texture ~= "" then
+					local copy = d:Clone()
+					copy.Transparency = 0
+					copy.Parent = newPart
+				end
+			end
+
+			newPart.Parent = part
+
+			for _, d in ipairs(part:GetChildren()) do
+				if d:IsA("Decal") then
+					d:Destroy()
+				end
+			end
+		end
+	end)
+end
+
+workspace.Minecraft.DescendantAdded:Connect(function(desc)
+	task.defer(onPartAdded, desc)
+end)
