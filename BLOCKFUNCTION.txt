@@ -795,7 +795,7 @@ task.defer(function()
 end)
 
 task.defer(function()
-	cam:GetPropertyChangedSignal("CFrame"):Connect(function()
+	while task.wait(0.25) do
 		local camCFrame = cam.CFrame
 		local camPos = camCFrame.Position
 		local camLook = camCFrame.LookVector
@@ -812,7 +812,7 @@ task.defer(function()
 				end
 			end
 		end
-	end)
+	end
 end)
 
 task.defer(function()
@@ -837,9 +837,9 @@ task.spawn(function()
 		local delta = now - last
 		last = now
 		local fps = 1 / delta
-		if fps < 20 and maxRenderDistance > minRenderDistance then
+		if fps < 30 and maxRenderDistance > minRenderDistance then
 			maxRenderDistance -= 1
-		elseif fps >= 20 and maxRenderDistance < maxRenderDistanceLimit then
+		elseif fps >= 30 and maxRenderDistance < maxRenderDistanceLimit then
 			maxRenderDistance += 1
 		end
 		task.wait()
