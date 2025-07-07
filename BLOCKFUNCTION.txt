@@ -666,7 +666,7 @@ local AllLowerGrass = {}
 local SubGrassParts = {}
 
 local minRenderDistance = 50
-local maxRenderDistanceLimit = 500
+local maxRenderDistanceLimit = 250
 local maxRenderDistance = 200
 
 local function isValidUnder(part)
