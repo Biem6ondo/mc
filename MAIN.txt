@@ -683,8 +683,8 @@ function automaticChunkLoading()
 
 	local BATCHES = {GRASS_BATCH, DIRT_BATCH, BEDROCK_BATCH}
 	local MinBatch = 10
-	local MaxBatch = 300
-	local MaxTotal = 1000
+	local MaxBatch = 200
+	local MaxTotal = 250
 
 	local TargetFPS = 60
 	local Sensitivity = 0.8
