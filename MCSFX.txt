@@ -182,10 +182,10 @@ end
 
 task.spawn(function()
 	while true do
-		task.wait(0.5)
+		task.wait(1.5)
 		local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 		if hrp then
-			for _, part in ipairs(workspace:GetPartBoundsInRadius(hrp.Position, 50)) do
+			for _, part in ipairs(workspace:GetPartBoundsInRadius(hrp.Position, 20)) do
 				onPartAdded(part)
 			end
 		end
