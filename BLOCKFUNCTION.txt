@@ -1,0 +1,1355 @@
+local ver = 20
+
+print("Module: Block Function Loaded! " .. ver)
+-- Health
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+local function load(url, filename)
+if not isfile(filename) then
+local ok, data = pcall(function() return game:HttpGet(url) end)
+if ok then writefile(filename, data) end
+end
+return getcustomasset(filename)
+end
+
+local heartImage = load("https://files.catbox.moe/46dt7p.png", "hearts.png")
+local sFall = load("https://files.catbox.moe/6fhaza.ogg", "fall_small.ogg")
+local bFall = load("https://files.catbox.moe/c36owk.ogg", "fall_big.ogg")
+local hitSnd = load("https://files.catbox.moe/6ehzwz.mp3", "damage.ogg")
+
+local USER = Instance.new("Folder", Player)
+USER.Name = "USER"
+
+local CurrentHealth = Instance.new("NumberValue", USER)
+CurrentHealth.Name = "CurrentHealth"
+CurrentHealth.Value = 20
+
+local MaxHealth = Instance.new("NumberValue", USER)
+MaxHealth.Name = "MaxHealth"
+MaxHealth.Value = 20
+
+local DamageState = Instance.new("StringValue", USER)
+DamageState.Name = "DamageState"
+DamageState.Value = ""
+
+local SpawnPoint = Instance.new("Vector3Value", USER)
+SpawnPoint.Name = "SpawnPoint"
+SpawnPoint.Value = HumanoidRootPart.Position
+
+local soundDamage = Instance.new("Sound", workspace)
+soundDamage.SoundId = hitSnd
+soundDamage.Volume = 1
+
+local soundFallSmall = Instance.new("Sound", workspace)
+soundFallSmall.SoundId = sFall
+soundFallSmall.Volume = 1
+
+local soundFallBig = Instance.new("Sound", workspace)
+soundFallBig.SoundId = bFall
+soundFallBig.Volume = 1
+
+local screen = Instance.new("ScreenGui", PlayerGui)
+screen.Name = "HealthHUD"
+screen.IgnoreGuiInset = false
+screen.ResetOnSpawn = false
+
+local ui = Instance.new("UIScale", screen)
+ui.Scale = 1.2
+
+local function clearHearts()
+for _, child in ipairs(screen:GetChildren()) do
+if child:IsA("ImageLabel") then
+child:Destroy()
+end
+end
+end
+
+local function createHeart(x, y, rectOffset, name, zindex)
+local heart = Instance.new("ImageLabel")
+heart.Size = UDim2.fromOffset(18, 18)
+heart.Position = UDim2.fromOffset(x, y)
+heart.BackgroundTransparency = 1
+heart.Image = heartImage
+heart.ImageRectSize = Vector2.new(9, 9)
+heart.ImageRectOffset = rectOffset
+heart.ResampleMode = Enum.ResamplerMode.Pixelated
+heart.ZIndex = zindex or 0
+heart.Name = name or "Heart"
+heart.Parent = screen
+return heart
+end
+
+local function updateHearts()
+clearHearts()
+local max = MaxHealth.Value
+local current = CurrentHealth.Value
+local totalHearts = math.ceil(max / 2)
+for i = 1, totalHearts do
+local row = math.floor((i - 1) / 10)
+local col = (i - 1) % 10
+local x = 10 + col * 20
+local y = 10 + row * 20
+createHeart(x, y, Vector2.new(16, 0), "Empty", 0)
+local hp = (i - 1) * 2
+if current >= hp + 2 then
+createHeart(x, y, Vector2.new(52, 0), "Full", 1)
+elseif current == hp + 1 then
+createHeart(x, y, Vector2.new(61, 0), "Half", 1)
+end
+end
+end
+
+CurrentHealth:GetPropertyChangedSignal("Value"):Connect(updateHearts)
+MaxHealth:GetPropertyChangedSignal("Value"):Connect(updateHearts)
+updateHearts()
+
+local Invincible = false
+local healTimer = 0
+RunService.Heartbeat:Connect(function(dt)
+if CurrentHealth.Value < MaxHealth.Value then
+healTimer += dt
+if healTimer >= 4 then
+CurrentHealth.Value = math.min(CurrentHealth.Value + 1, MaxHealth.Value)
+healTimer = 0
+end
+end
+end)
+
+local falling = false
+local fallStartY = nil
+
+Humanoid.StateChanged:Connect(function(_, new)
+if new == Enum.HumanoidStateType.Freefall then
+fallStartY = HumanoidRootPart.Position.Y
+falling = true
+elseif falling and new == Enum.HumanoidStateType.Landed then
+local landedY = HumanoidRootPart.Position.Y
+local studsFallen = fallStartY - landedY
+local blocksFallen = studsFallen / 4
+if blocksFallen >= 4 and blocksFallen < 7 then
+soundFallSmall:Play()
+elseif blocksFallen >= 7 then
+soundFallBig:Play()
+end
+if blocksFallen > 3 then
+local dmg = math.floor(blocksFallen - 3)
+if dmg > 0 and not Invincible then
+DamageState.Value = "Fall"
+CurrentHealth.Value = math.max(CurrentHealth.Value - dmg, 0)
+end
+end
+falling = false
+fallStartY = nil
+end
+end)
+
+local prev = CurrentHealth.Value
+RunService.Heartbeat:Connect(function()
+if CurrentHealth.Value < prev then
+soundDamage:Play()
+if Invincible then
+CurrentHealth.Value = MaxHealth.Value
+end
+end
+prev = CurrentHealth.Value
+end)
+
+local deadHandled = false
+RunService.Heartbeat:Connect(function()
+if CurrentHealth.Value <= 0 and not Invincible and not deadHandled then
+deadHandled = true
+HumanoidRootPart.CFrame = CFrame.new(SpawnPoint.Value)
+CurrentHealth.Value = MaxHealth.Value
+Invincible = true
+task.delay(3, function()
+Invincible = false
+deadHandled = false
+end)
+end
+end)
+RunService.Heartbeat:Connect(function()
+if CurrentHealth.Value > MaxHealth.Value then
+CurrentHealth.Value = MaxHealth.Value
+end
+end) 
+
+-- Cloud
+local minecraft = workspace:WaitForChild("Minecraft", 9e9)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+
+local CloudFolder = Instance.new("Folder", workspace)
+CloudFolder.Name = "MinecraftClouds"
+
+local cloudToggle = Instance.new("BoolValue")
+cloudToggle.Name = "RenderCloud"
+cloudToggle.Value = true
+cloudToggle.Parent = CloudFolder
+
+local maxClouds = 12
+local cloudHeight = 300
+local createdClouds = {}
+local cloudSpeed = Vector3.new(0.03, 0, 0)
+local cloudSize = Vector3.new(70, 10, 70)
+local updateInterval = 0.25
+local timer = 0
+
+local function createCloud(centerPos)
+	if not cloudToggle.Value then return end
+
+	local cloud = Instance.new("Model")
+	cloud.Name = "Cloud"
+	cloud.Parent = CloudFolder
+
+	local blocks = {}
+	local numBlocks = math.random(3, 6)
+
+	for i = 1, numBlocks do
+		local offsetX = math.random(-1, 1) * cloudSize.X
+		local offsetZ = math.random(-1, 1) * cloudSize.Z
+		local key = offsetX .. "," .. offsetZ
+		if not blocks[key] then
+			blocks[key] = true
+
+			local part = Instance.new("Part")
+			part.Anchored = true
+			part.CanCollide = false
+			part.CastShadow = false
+			part.Size = cloudSize
+			part.Position = centerPos + Vector3.new(offsetX, 0, offsetZ)
+			part.Material = Enum.Material.SmoothPlastic
+			part.Color = Color3.fromRGB(240, 240, 240)
+			part.Parent = cloud
+
+			if not cloud.PrimaryPart then
+				cloud.PrimaryPart = part
+			end
+		end
+	end
+
+	table.insert(createdClouds, cloud)
+end
+
+local function isTooClose(pos)
+	for _, cloud in pairs(createdClouds) do
+		if cloud.PrimaryPart and (cloud.PrimaryPart.Position - pos).Magnitude < 200 then
+			return true
+		end
+	end
+	return false
+end
+
+RunService.RenderStepped:Connect(function(dt)
+	timer += dt
+	if timer < updateInterval then return end
+	timer = 0
+
+	local camPos = camera.CFrame.Position
+
+	if not cloudToggle.Value then
+		for i = #createdClouds, 1, -1 do
+			local cloud = createdClouds[i]
+			if cloud then
+				cloud:Destroy()
+				table.remove(createdClouds, i)
+			end
+		end
+		return
+	end
+
+	for i = #createdClouds, 1, -1 do
+		local cloud = createdClouds[i]
+		if cloud and cloud.PrimaryPart then
+			local newPos = cloud:GetPrimaryPartCFrame() + cloudSpeed
+			cloud:SetPrimaryPartCFrame(newPos)
+
+			if (cloud.PrimaryPart.Position - camPos).Magnitude > 1000 then
+				cloud:Destroy()
+				table.remove(createdClouds, i)
+			end
+		elseif not cloud or not cloud.PrimaryPart then
+			table.remove(createdClouds, i)
+		end
+	end
+
+	if #createdClouds < maxClouds then
+		local angle = math.random() * math.pi * 2
+		local radius = math.random(200, 400)
+		local pos = camPos + Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+		pos = Vector3.new(pos.X, cloudHeight, pos.Z)
+
+		if not isTooClose(pos) then
+			createCloud(pos)
+		end
+	end
+end)
+
+-- Sand
+
+local TweenService = game:GetService("TweenService")
+
+local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+local function getGroundInfo(part)
+	rayParams.FilterDescendantsInstances = {part}
+	local ray = workspace:Raycast(part.Position, Vector3.new(0, -500, 0), rayParams)
+	if ray and ray.Instance then
+		return ray.Instance, ray.Position.Y + ray.Instance.Size.Y / 4 + part.Size.Y / 4
+	end
+	return nil, -500
+end
+
+local function addClickDetector(part)
+	if not part:FindFirstChildOfClass("ClickDetector") then
+		local cd = Instance.new("ClickDetector")
+		cd.Parent = part
+		cd.MouseClick:Connect(function()
+			part:Destroy()
+		end)
+	end
+end
+
+local function tweenDrop(part)
+	addClickDetector(part)
+
+	task.spawn(function()
+		local tween
+
+		while part and part.Parent do
+			local hit, targetY = getGroundInfo(part)
+			local distance = part.Position.Y - targetY
+
+			if distance > 0.01 then
+				part.CanCollide = false
+				if tween then tween:Cancel() end
+				local info = TweenInfo.new(distance / 30, Enum.EasingStyle.Linear)
+				local goal = {Position = Vector3.new(part.Position.X, targetY, part.Position.Z)}
+				tween = TweenService:Create(part, info, goal)
+				tween:Play()
+				tween.Completed:Wait()
+			else
+				part.Position = Vector3.new(part.Position.X, targetY, part.Position.Z)
+				part.CanCollide = true
+				break
+			end
+
+			task.wait(0.2)
+		end
+	end)
+end
+
+minecraft.DescendantAdded:Connect(function(obj)
+	task.defer(function()
+		if obj:IsA("BasePart") and obj.Name == "Sand" then
+			tweenDrop(obj)
+		end
+	end)
+end)
+
+minecraft.ChildAdded:Connect(function(glow)
+task.wait()
+if glow:IsA("BasePart") and glow.Name == "Glowstone" then
+local light = Instance.new("PointLight")
+light.Brightness = 2
+light.Range = 18
+light.Parent = glow
+end
+end)
+
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+
+local lastState
+
+local function updateLighting()
+	local hour = Lighting.ClockTime
+	local isDay = hour >= 6 and hour < 18
+
+	if isDay ~= lastState then
+		lastState = isDay
+
+		local fogColor = isDay and Color3.fromRGB(200, 200, 200) or Color3.fromRGB(30, 30, 30)
+		local ambientColor = isDay and Color3.fromRGB(160, 160, 160) or Color3.fromRGB(40, 40, 40)
+
+		local tween = TweenInfo.new(1)
+
+		TweenService:Create(Lighting, tween, {
+			FogColor = fogColor,
+			OutdoorAmbient = ambientColor
+		}):Play()
+	end
+end
+
+task.defer(function()
+while true do
+	updateLighting()
+Lighting.Brightness = 1
+	task.wait(0.5)
+end
+end)
+
+-- Test
+
+local Tool = Instance.new("Tool", game.Players.LocalPlayer.Backpack)
+Tool.RequiresHandle = false
+Tool.Name = "Wooden_Hoe_Item"
+Tool.ToolTip = "Wooden Hoe"
+
+local Player = game.Players.LocalPlayer
+local Mouse = Player:GetMouse()
+
+local textureFolder = ".TexturePack"
+local farmlandName = "FarmlandDry.png"
+local dirtName = "Dirt_Face1.png"
+local farmlandPath = textureFolder .. "/" .. farmlandName
+local dirtPath = textureFolder .. "/" .. dirtName
+local farmlandURL = "https://static.wikia.nocookie.net/minecraft_gamepedia/images/6/60/Farmland_%28dry_texture%29_JE2_BE2.png/revision/latest?cb=20201006055318"
+
+if not isfolder(textureFolder) then
+    makefolder(textureFolder)
+end
+
+if not isfile(farmlandPath) then
+    writefile(farmlandPath, game:HttpGet(farmlandURL))
+end
+
+local faces = {
+    Top = Enum.NormalId.Top,
+    Bottom = Enum.NormalId.Bottom,
+    Left = Enum.NormalId.Left,
+    Right = Enum.NormalId.Right,
+    Front = Enum.NormalId.Front,
+    Back = Enum.NormalId.Back,
+}
+
+local function onActivate()
+    local target = Mouse.Target
+    if target and target:IsA("BasePart") and (target.Name == "Grass" or target.Name == "Dirt") then
+        target.Size = Vector3.new(4, 3.7, 4)
+target.Position = target.Position - Vector3.new(0, 0.15, 0)
+target.Name = "Test_Block_Changed_1"
+        for _, d in ipairs(target:GetChildren()) do
+            if d:IsA("Decal") then
+                d:Destroy()
+            end
+        end
+        local decalTop = Instance.new("Decal")
+        decalTop.Face = faces.Top
+        decalTop.Texture = getcustomasset(farmlandPath)
+        decalTop.Parent = target
+        for faceName, faceEnum in pairs(faces) do
+            if faceEnum ~= Enum.NormalId.Top then
+                local decal = Instance.new("Decal")
+                decal.Face = faceEnum
+                decal.Texture = getcustomasset(dirtPath)
+                decal.Parent = target
+            end
+        end
+    end
+end
+
+Tool.Activated:Connect(onActivate)
+
+-- Barrier
+
+local folderPath = ".TexturePack"
+local fileName = "Barrier.png"
+local fullPath = folderPath .. "/" .. fileName
+
+if not isfolder(folderPath) then
+	makefolder(folderPath)
+end
+
+if not isfile(fullPath) then
+	writefile(fullPath, game:HttpGet("https://static.wikia.nocookie.net/minecraft/images/8/8d/BarrierNew.png/revision/latest?cb=20190830230156"))
+end
+
+local minecraft = workspace:FindFirstChild("Minecraft")
+if not minecraft then return end
+
+local barrierFolder = Instance.new("Folder")
+barrierFolder.Name = "Barrier_Folder"
+barrierFolder.Parent = minecraft
+
+local function addBillboard(part)
+	if not part:IsA("BasePart") or part.Name ~= "Barrier" then return end
+	if part:FindFirstChild("BarrierGui") then return end
+
+	part.Transparency = 1
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "BarrierGui"
+	billboard.Adornee = part
+	billboard.Size = UDim2.new(4, 0, 4, 0)
+	billboard.AlwaysOnTop = false
+	billboard.Enabled = false
+	billboard.Parent = part
+
+	local img = Instance.new("ImageLabel")
+	img.Size = UDim2.new(1, 0, 1, 0)
+	img.BackgroundTransparency = 1
+	img.Image = getcustomasset(fullPath)
+	img.Name = "Barrier"
+	img.Parent = billboard
+
+	task.defer(function()
+		part.Parent = barrierFolder
+	end)
+end
+
+minecraft.ChildAdded:Connect(addBillboard)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local backpack = player:WaitForChild("Backpack")
+
+local folderPath = workspace:WaitForChild("Minecraft"):WaitForChild("Barrier_Folder")
+
+task.defer(function()
+while task.wait(1.5) do
+    local hasBarrierTool = backpack:FindFirstChild("Barrier_Item") ~= nil
+
+    for _, descendant in pairs(folderPath:GetDescendants()) do
+        if descendant:IsA("BillboardGui") then
+            descendant.Enabled = not hasBarrierTool
+        end
+    end
+end
+end)
+
+-- Anti Death From Void
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local RunService = game:GetService("RunService")
+
+local part = Instance.new("Part")
+part.Size = Vector3.new(2048, 4, 2048)
+part.Anchored = true
+part.Transparency = 1
+part.CanCollide = true
+part.Parent = workspace
+
+part.Touched:Connect(function(hit)
+	local model = hit:FindFirstAncestorOfClass("Model")
+	if model and model:FindFirstChild("Humanoid") and model == player.Character then
+		local root = model:FindFirstChild("HumanoidRootPart")
+		if root then
+			if _G.sendMessage then
+				_G.sendMessage(player.Name .. " fell out of the world", Color3.fromRGB(255, 255, 255))
+			end
+			root.CFrame = CFrame.new(0, math.random(40, 100), 0)
+		end
+	end
+end)
+
+task.defer(function()
+while true do
+	task.wait(1)
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if root then
+		local x = math.floor(root.Position.X / 2048 + 0.5) * 2048
+		local z = math.floor(root.Position.Z / 2048 + 0.5) * 2048
+		part.Position = Vector3.new(x, -400, z)
+	end
+end
+end)
+
+-- Cannot Place < -4
+local Minecraft = workspace:WaitForChild("Minecraft")
+local debounce = {}
+local queue = {}
+local running = false
+
+local function process()
+	if running then return end
+	running = true
+	while #queue > 0 do
+		for i = 1, 20 do
+			local obj = table.remove(queue, 1)
+			if not obj then break end
+			if obj:IsA("BasePart") and not debounce[obj] then
+				debounce[obj] = true
+				if obj:IsDescendantOf(Minecraft) and obj.Parent and obj.Position.Y < -3 then
+					obj:Destroy()
+				end
+				debounce[obj] = nil
+			end
+		end
+		task.wait()
+	end
+	running = false
+end
+
+Minecraft.DescendantAdded:Connect(function(obj)
+	if obj:IsA("BasePart") then
+		table.insert(queue, obj)
+		task.spawn(process)
+	end
+end)
+
+-- Fire
+
+local Minecraft = workspace:WaitForChild("Minecraft")
+local http = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local Camera = workspace.CurrentCamera
+
+if not isfile(".TexturePack/fire_layer_0.png") then
+writefile(".TexturePack/fire_layer_0.png", game:HttpGet("https://i.postimg.cc/JtV1Zf5G/fire-layer-0.png"))
+end
+if not isfile(".TexturePack/fire_layer_1.png") then
+writefile(".TexturePack/fire_layer_1.png", game:HttpGet("https://i.postimg.cc/4xGcTqRf/fire-layer-1.png"))
+end
+if not isfile(".TexturePack/FireSpawn.ogg") then
+writefile(".TexturePack/FireSpawn.ogg", game:HttpGet("https://files.catbox.moe/1obyxy.ogg"))
+end
+if not isfile(".TexturePack/fire_layer.mcmeta") then
+writefile(".TexturePack/fire_layer.mcmeta", [[
+{
+"animation": {
+"frametime": 2
+}
+}
+]])
+end
+if not isfile(".TexturePack/fire_sound.ogg") then
+writefile(".TexturePack/fire_sound.ogg", game:HttpGet("https://files.catbox.moe/l82h12.ogg"))
+end
+
+local tex0 = getcustomasset(".TexturePack/fire_layer_0.png")
+local tex1 = getcustomasset(".TexturePack/fire_layer_1.png")
+local soundAsset = getcustomasset(".TexturePack/fire_sound.ogg")
+local soundSpawn = getcustomasset(".TexturePack/FireSpawn.ogg")
+
+local delay = 0.1
+local success, data = pcall(function()
+return http:JSONDecode(readfile(".TexturePack/fire_layer.mcmeta"))
+end)
+if success and data.animation and tonumber(data.animation.frametime) then
+delay = tonumber(data.animation.frametime) * 0.05
+end
+
+local totalFrames = 32
+local frameHeight = 16
+local excludedFaces = {
+[Enum.NormalId.Top] = true,
+[Enum.NormalId.Bottom] = true,
+}
+
+local folder = Minecraft:FindFirstChild("Fire_Folder") or Instance.new("Folder", Minecraft)
+folder.Name = "Fire_Folder"
+
+Minecraft.DescendantAdded:Connect(function(child)
+    if child:IsA("Part") and child.Name == "Fire" then
+        task.wait()
+
+        local light = Instance.new("PointLight", child)
+        light.Color = Color3.new(1, 0.4, 0.1)
+        light.Brightness = 2
+        light.Range = 10
+
+        local fi = Instance.new("Sound", child)
+        fi.SoundId = soundSpawn
+        fi.Looped = false
+        fi.Volume = 1
+        fi:Play()
+
+        local fireSound = Instance.new("Sound", child)
+        fireSound.SoundId = soundAsset
+        fireSound.Looped = false
+        fireSound.Volume = 1
+        task.spawn(function()
+            while child and child.Parent do
+                fireSound:Play()
+                task.wait(math.random(2, 3))
+            end
+        end)
+
+        local imageList = {}
+        local fireParts = {}
+
+        local function addGui(part, face)
+task.wait()
+            local gui = Instance.new("SurfaceGui", part)
+            gui.Face = face
+            gui.AlwaysOnTop = false
+            gui.LightInfluence = 0
+
+            local img0 = Instance.new("ImageLabel", gui)
+            img0.Size = UDim2.new(1, 0, 1, 0)
+            img0.Position = UDim2.new(0, 0, 0, 0)
+            img0.BackgroundTransparency = 1
+            img0.Image = tex0
+            img0.ScaleType = Enum.ScaleType.Crop
+            img0.ResampleMode = Enum.ResamplerMode.Pixelated
+
+            local img1 = img0:Clone()
+            img1.Image = tex1
+            img1.Parent = gui
+
+            table.insert(imageList, {img0, img1})
+            table.insert(fireParts, {gui, img1})
+        end
+
+        local r = 5
+        local cx, cy, cz = child.Position.X, child.Position.Y, child.Position.Z
+        local offsets = {
+            {Vector3.new(0,4,4), Vector3.new(cx+1.5,cy,cz), Vector3.new(0,0,r)},
+            {Vector3.new(0,4,4), Vector3.new(cx-1.5,cy,cz), Vector3.new(0,0,r)},
+            {Vector3.new(0,4,4), Vector3.new(cx-1.85,cy,cz), Vector3.new(0,0,-r)},
+            {Vector3.new(0,4,4), Vector3.new(cx-0.15,cy,cz), Vector3.new(0,0,-r)},
+            {Vector3.new(4,4,0), Vector3.new(cx,cy,cz+1.85), Vector3.new(-r,0,0)},
+            {Vector3.new(4,4,0), Vector3.new(cx,cy,cz+0.15), Vector3.new(-r,0,0)},
+            {Vector3.new(4,4,0), Vector3.new(cx,cy,cz-1.85), Vector3.new(r,0,0)},
+            {Vector3.new(4,4,0), Vector3.new(cx,cy,cz-0.15), Vector3.new(-r,0,0)},
+        }
+
+        for _, v in ipairs(offsets) do
+task.wait()
+            local a = Instance.new("Part", child)
+            a.Size, a.Position, a.Rotation = unpack(v)
+            a.Anchored = true
+            a.Name = "1259851374"
+a.Transparency = 1
+a.CanCollide = false
+
+            local rx = math.floor(a.Rotation.X + 0.5)
+            local rz = math.floor(a.Rotation.Z + 0.5)
+
+            if (rx == 5 or rx == -5) then
+                addGui(a, Enum.NormalId.Front)
+                addGui(a, Enum.NormalId.Back)
+            elseif (rz == 5 or rz == -5) then
+                addGui(a, Enum.NormalId.Left)
+                addGui(a, Enum.NormalId.Right)
+            end
+        end
+
+        task.spawn(function()
+            local index = 0
+            while child and child.Parent do
+                local dist = (Camera.CFrame.Position - child.Position).Magnitude
+                if dist <= 100 then
+                    for _, pair in ipairs(imageList) do
+                        local img0, img1 = unpack(pair)
+                        img1.Visible = true
+                    end
+                    local offset = Vector2.new(0, (index % totalFrames) * frameHeight)
+                    local size = Vector2.new(16, 16)
+                    for _, pair in ipairs(imageList) do
+                        local img0, img1 = unpack(pair)
+                        img0.ImageRectOffset = offset
+                        img0.ImageRectSize = size
+                        img1.ImageRectOffset = offset
+                        img1.ImageRectSize = size
+                    end
+                    index += 1
+                    task.wait(delay)
+                else
+                    for _, gui in ipairs(fireParts) do
+                        gui[2].Visible = false
+                    end
+                    task.wait(0.5)
+                end
+            end
+        end)
+    end
+end)
+
+-- Do it Again...
+
+local url = "https://static.wikia.nocookie.net/minecraft_gamepedia/images/5/5d/Grass_%28item%29.png/revision/latest?cb=20190826122346"
+local path = ".TexturePack/grass_item.png"
+if not isfile(path) then writefile(path, game:HttpGet(url)) end
+local asset = getcustomasset(path)
+
+local Minecraft = workspace:WaitForChild("Minecraft")
+local cam = workspace.CurrentCamera
+
+local AllLowerGrass = {}
+local SubGrassParts = {}
+
+local minRenderDistance = 100
+local maxRenderDistanceLimit = 250
+local maxRenderDistance = 100
+
+local function isValidUnder(part)
+local region = Region3.new(part.Position + Vector3.new(-1, -3, -1), part.Position + Vector3.new(1, -1, 1))
+local parts = workspace:FindPartsInRegion3WithIgnoreList(region, {part}, 10)
+for _, p in ipairs(parts) do
+local n = p.Name
+if p:IsDescendantOf(Minecraft) and (n == "Grass" or n == "Dirt") then
+return true
+end
+end
+return false
+end
+
+local function removeLowerGrass(targetPart)
+for i = #AllLowerGrass, 1, -1 do
+if AllLowerGrass[i] == targetPart then
+table.remove(AllLowerGrass, i)
+break
+end
+end
+for i = #SubGrassParts, 1, -1 do
+if SubGrassParts[i].target == targetPart then
+for _, d in ipairs(SubGrassParts[i].parts) do
+d.part:Destroy()
+end
+table.remove(SubGrassParts, i)
+break
+end
+end
+targetPart:Destroy()
+end
+
+local function createSurfaceGui(face)
+local gui = Instance.new("SurfaceGui")
+gui.Face = face
+gui.AlwaysOnTop = false
+gui.LightInfluence = 1
+gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+gui.PixelsPerStud = 50
+gui.Enabled = false
+
+local img = Instance.new("ImageLabel")  
+img.Image = asset  
+img.Size = UDim2.new(1, 0, 1, 0)  
+img.BackgroundTransparency = 1  
+img.BorderSizePixel = 0  
+img.Parent = gui  
+
+return gui
+
+end
+
+local function createSubParts(targetPart)
+if not targetPart or not targetPart:IsDescendantOf(workspace) then return end
+if table.find(AllLowerGrass, targetPart) then return end
+if not isValidUnder(targetPart) then
+targetPart:Destroy()
+return
+end
+
+table.insert(AllLowerGrass, targetPart)  
+targetPart.Transparency = 1  
+targetPart.CanCollide = false  
+
+local subParts = {}  
+
+local function make(angle)  
+	local part = Instance.new("Part")  
+	part.Size = Vector3.new(0, 4, 4)  
+	part.Anchored = true  
+	part.CanCollide = false  
+	part.Transparency = 1  
+	part.Position = targetPart.Position  
+	part.Rotation = Vector3.new(0, angle, 0)  
+	part.Name = "KING"  
+	part.Parent = targetPart  
+
+	for _, gui in ipairs({createSurfaceGui(Enum.NormalId.Right), createSurfaceGui(Enum.NormalId.Left)}) do  
+		gui.Parent = part  
+	end  
+
+	table.insert(subParts, {part = part, guis = part:GetChildren()})  
+end  
+
+make(45)  
+make(135)  
+
+table.insert(SubGrassParts, {target = targetPart, parts = subParts})
+
+end
+
+Minecraft.DescendantAdded:Connect(function(desc)
+task.defer(function()
+if desc:IsA("Part") and desc.Name == "Lower_Grass" then
+createSubParts(desc)
+end
+end)
+end)
+
+Minecraft.DescendantRemoving:Connect(function(desc)
+if not desc:IsA("Part") then return end
+if desc.Name ~= "Grass" and desc.Name ~= "Dirt" then return end
+
+local region = Region3.new(desc.Position + Vector3.new(-2, 1, -2), desc.Position + Vector3.new(2, 5, 2))  
+local parts = workspace:FindPartsInRegion3WithIgnoreList(region, {}, math.huge)  
+for _, part in ipairs(parts) do  
+	if part:IsA("Part") and part.Name == "Lower_Grass" and table.find(AllLowerGrass, part) then  
+		if not isValidUnder(part) then  
+			removeLowerGrass(part)  
+		end  
+	end  
+end
+
+end)
+
+task.defer(function()
+local count = 0
+for _, desc in ipairs(Minecraft:GetDescendants()) do
+if desc:IsA("Part") and desc.Name == "Lower_Grass" then
+createSubParts(desc)
+count += 1
+if count >= 1500 then
+count = 0
+task.wait()
+end
+end
+end
+end)
+
+task.defer(function()
+local delayTime = 0.5
+while true do
+local t0 = tick()
+local camPos = cam.CFrame.Position
+local camLook = cam.CFrame.LookVector
+for _, item in ipairs(SubGrassParts) do
+local target = item.target
+if not target:IsDescendantOf(workspace) then continue end
+local toTarget = target.Position - camPos
+local dist = toTarget.Magnitude
+local visible = dist <= maxRenderDistance and camLook:Dot(toTarget.Unit) > 0.5
+for _, d in ipairs(item.parts) do
+for _, gui in ipairs(d.guis) do
+if gui:IsA("SurfaceGui") then
+gui.Enabled = visible
+end
+end
+end
+end
+local dt = tick() - t0
+delayTime = math.clamp(dt * 2, 0.1, 5)
+task.wait(delayTime)
+end
+end)
+
+task.defer(function()
+while task.wait(2) do
+for i = #AllLowerGrass, 1, -1 do
+local part = AllLowerGrass[i]
+if not part:IsDescendantOf(workspace) then
+table.remove(AllLowerGrass, i)
+elseif not isValidUnder(part) then
+removeLowerGrass(part)
+end
+end
+end
+end)
+
+task.spawn(function()
+local last = tick()
+while true do
+local now = tick()
+local delta = now - last
+last = now
+local fps = 1 / delta
+if fps < 20 and maxRenderDistance > minRenderDistance then
+maxRenderDistance -= 1
+elseif fps >= 20 and maxRenderDistance < maxRenderDistanceLimit then
+maxRenderDistance += 1
+end
+task.wait()
+end
+end)
+
+-- Graphic and Block Transparency
+
+local Minecraft = workspace:WaitForChild("Minecraft")
+
+local leaf_graphics = Instance.new("NumberValue", workspace)
+leaf_graphics.Value = 0
+leaf_graphics.Name = "LEAF_GRAPHICS"
+
+local function applyChanges(part)
+	if part.Name == "Structure_Void" then
+		part.Transparency = 1
+		part.CanCollide = false
+	elseif part.Name == "White_Glass" then
+		part.Transparency = 0.9
+		part.Color = Color3.new(1, 1, 1)
+elseif part.Name == "Leaf" then
+		part.Color = Color3.new(0, 0, 0)
+part.Transparency = leaf_graphics.Value
+elseif part.Name == "Fire" then
+part.Transparency = 1
+part.CanCollide = false
+elseif part.Name == "Barrier" then
+part.Transparency = 1
+	end
+end
+
+local function waitForSixDecals(part)
+	task.defer(function()
+		while true do
+			local count = 0
+			for _, child in ipairs(part:GetChildren()) do
+				if child:IsA("Decal") then
+					count += 1
+				end
+			end
+			if count == 6 then
+				applyChanges(part)
+				break
+			end
+			task.wait(0.5)
+		end
+	end)
+end
+
+local function processPart(part)
+	if part:IsA("BasePart") and (part.Name == "Structure_Void" or part.Name == "White_Glass" or part.Name == "Leaf" or part.Name == "Fire" or part.Name == "Barrier") then
+		waitForSixDecals(part)
+	end
+end
+
+task.defer(function()
+local i = 0
+for _, v in ipairs(Minecraft:GetDescendants()) do
+	processPart(v)
+	i += 1
+	if i % 1500 == 0 then task.wait() end
+end
+end)
+
+Minecraft.ChildAdded:Connect(function(part)
+	task.wait()
+	processPart(part)
+end)
+-- Mobile Touch
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local SoundService = game:GetService("SoundService")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+local soundFolderName = ".MCSFX"
+if not isfolder(soundFolderName) then
+    makefolder(soundFolderName)
+end
+
+local soundURLs = {
+    "https://files.catbox.moe/8zznok.ogg",
+    "https://files.catbox.moe/4587kz.ogg",
+    "https://files.catbox.moe/91eal7.ogg",
+    "https://files.catbox.moe/142gl7.ogg",
+}
+
+local soundPaths = {}
+
+for i, url in ipairs(soundURLs) do
+    local fileName = soundFolderName.."/sound"..i..".ogg"
+    if not isfile(fileName) then
+        writefile(fileName, game:HttpGet(url))
+    end
+    table.insert(soundPaths, getcustomasset(fileName))
+end
+
+if not isfolder(".TexturePack") then
+    makefolder(".TexturePack")
+end
+
+local imageName = "TouchImage"
+local imagePath = ".TexturePack/"..imageName..".png"
+local imageURL = "https://i.postimg.cc/26Hx6Fbg/Background-Eraser-20250618-204319148.png"
+
+if not isfile(imagePath) then
+    writefile(imagePath, game:HttpGet(imageURL))
+end
+
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.Name = "TouchImageGUI"
+gui.ResetOnSpawn = false
+
+local img = Instance.new("ImageLabel")
+img.Size = UDim2.new(0, 160, 0, 160)
+img.BackgroundTransparency = 1
+img.Image = getcustomasset(imagePath)
+img.Visible = false
+img.AnchorPoint = Vector2.new(0.5, 0.5)
+img.ZIndex = 9999
+img.Parent = gui
+
+local function playRandomSound()
+    local randomPath = soundPaths[math.random(1, #soundPaths)]
+    local sound = Instance.new("Sound")
+    sound.SoundId = randomPath
+    sound.Volume = 1
+    sound.PlayOnRemove = true
+    sound.Parent = SoundService
+    sound:Destroy()
+end
+
+if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+    local touchInput = nil
+
+    UserInputService.TouchStarted:Connect(function(input, gameProcessed)
+        if not gameProcessed and not touchInput then
+            local part = Workspace:FindPartOnRayWithIgnoreList(Ray.new(Workspace.CurrentCamera.CFrame.Position, (Workspace.CurrentCamera:ScreenPointToRay(input.Position.X, input.Position.Y).Direction * 1000)), {player.Character})
+            if not part then
+                playRandomSound()
+            end
+
+            touchInput = input
+            img.Position = UDim2.new(0, input.Position.X, 0, input.Position.Y)
+            img.Visible = true
+        end
+    end)
+
+    UserInputService.TouchMoved:Connect(function(input)
+        if input == touchInput then
+            img.Position = UDim2.new(0, input.Position.X, 0, input.Position.Y)
+        end
+    end)
+
+    UserInputService.TouchEnded:Connect(function(input)
+        if input == touchInput then
+            touchInput = nil
+            img.Visible = false
+        end
+    end)
+end
+
+-- Test
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local root = character:WaitForChild("HumanoidRootPart")
+local camera = workspace.CurrentCamera
+
+local recentCount = 0
+local skipMode = false
+local ignoredOakLogs = {}
+
+local rotationModes = {
+	Oak_Log = "XYZ",
+	Pumpkin = "Y",
+}
+
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		skipMode = recentCount > 5
+		recentCount = 0
+	end
+end)
+
+local function getBlockRotation(name)
+	local look = camera.CFrame.LookVector
+	local absLook = Vector3.new(math.abs(look.X), math.abs(look.Y), math.abs(look.Z))
+	local mode = rotationModes[name]
+
+	if mode == "Y" then
+		local raw = math.deg(math.atan2(look.X, look.Z))
+		local fixed = math.floor((raw + 45) / 90) * 90 % 360
+		return Vector3.new(0, fixed, 0)
+	elseif mode == "XYZ" then
+		if absLook.Y > absLook.X and absLook.Y > absLook.Z then
+			return Vector3.new(0, 0, 0)
+		elseif absLook.X > absLook.Z then
+			return Vector3.new(0, 0, 90)
+		else
+			return Vector3.new(90, 0, 0)
+		end
+	end
+
+	return Vector3.zero
+end
+
+local function hasSixDecalsWithTexture(part)
+	local count = 0
+	for _, d in ipairs(part:GetChildren()) do
+		if d:IsA("Decal") and d.Texture ~= "" then
+			count += 1
+		end
+	end
+	return count == 6
+end
+
+local function hideAllDecals(part)
+	for _, d in ipairs(part:GetChildren()) do
+		if d:IsA("Decal") then
+			d.Transparency = 1
+		end
+	end
+end
+
+local function onPartAdded(part)
+	if not part:IsA("BasePart") then return end
+	if not rotationModes[part.Name] then
+		recentCount += 1
+		return
+	end
+
+	if skipMode or ignoredOakLogs[part] then
+		ignoredOakLogs[part] = true
+		return
+	end
+
+	task.defer(function()
+		repeat task.wait() until hasSixDecalsWithTexture(part)
+		hideAllDecals(part)
+		if (part.Position - root.Position).Magnitude > 40 then return end
+		if part.Size == Vector3.new(4, 4, 4) and part.Rotation == Vector3.zero then
+			local rot = getBlockRotation(part.Name)
+
+			local newPart = Instance.new("Part")
+			newPart.Size = part.Size
+			newPart.Anchored = true
+			newPart.CanCollide = false
+			newPart.CanTouch = false
+			newPart.CanQuery = false
+			newPart.Transparency = 1
+			newPart.CFrame = part.CFrame
+			newPart.Rotation = rot
+			newPart.Name = "Rotated"
+
+			for _, d in ipairs(part:GetChildren()) do
+				if d:IsA("Decal") and d.Texture ~= "" then
+					local copy = d:Clone()
+					copy.Transparency = 0
+					copy.Parent = newPart
+				end
+			end
+
+			newPart.Parent = part
+
+			for _, d in ipairs(part:GetChildren()) do
+				if d:IsA("Decal") then
+					d:Destroy()
+				end
+			end
+		end
+	end)
+end
+
+workspace.Minecraft.DescendantAdded:Connect(function(desc)
+	task.defer(onPartAdded, desc)
+end)
+
+-- Fog
+
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+local UserSettings = UserSettings():GetService("UserGameSettings")
+
+local lastLevel = nil
+local targetStart = 0
+local targetEnd = 0
+local currentStart = Lighting.FogStart
+local currentEnd = Lighting.FogEnd
+
+local function getFogByLevel(level)
+	if level == Enum.SavedQualitySetting.QualityLevel1 then
+		return 150, 200
+	elseif level == Enum.SavedQualitySetting.QualityLevel2 then
+		return 350, 400
+	elseif level == Enum.SavedQualitySetting.QualityLevel3 then
+		return 600, 800
+	elseif level == Enum.SavedQualitySetting.QualityLevel4 then
+		return 800, 1200
+	else
+		return 1000, 1500
+	end
+end
+
+local function updateTargetFog()
+	local level = UserSettings.SavedQualityLevel
+	if level ~= lastLevel then
+		lastLevel = level
+		targetStart, targetEnd = getFogByLevel(level)
+	end
+end
+
+task.spawn(function()
+	while true do
+		updateTargetFog()
+		task.wait(1)
+	end
+end)
+
+RunService.RenderStepped:Connect(function(dt)
+	local speed = 1
+	currentStart += (targetStart - currentStart) * dt * speed
+	currentEnd += (targetEnd - currentEnd) * dt * speed
+
+	Lighting.FogStart = currentStart
+	Lighting.FogEnd = currentEnd
+end)
+-- Touch
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+local Minecraft = workspace
+if not Minecraft or not UserInputService.TouchEnabled then return end
+
+local selectionBox = CoreGui:FindFirstChild("McSelectingBox") or Instance.new("SelectionBox")
+selectionBox.Name = "McSelectingBox"
+selectionBox.LineThickness = 0.035
+selectionBox.Color3 = Color3.new(0, 0, 0)
+selectionBox.Parent = CoreGui
+
+local currentTarget
+
+local function getTarget(part)
+	if not part or not part:IsA("BasePart") then return end
+	if part.Size ~= Vector3.new(4, 4, 4) then return end
+	if not part:IsDescendantOf(Minecraft) then return end
+	local parent = part.Parent
+	if parent:IsA("Model") and not parent:FindFirstChildWhichIsA("Humanoid") then
+		return parent
+	end
+	return part
+end
+
+UserInputService.TouchStarted:Connect(function(input, processed)
+	if processed then return end
+	local target = getTarget(Mouse.Target)
+	if target and target ~= currentTarget then
+		currentTarget = target
+		selectionBox.Adornee = target
+	end
+end)
+
+UserInputService.TouchEnded:Connect(function()
+	currentTarget = nil
+	selectionBox.Adornee = nil
+end)
+
+RunService.Heartbeat:Connect(function()
+	if currentTarget then
+		local target = getTarget(Mouse.Target)
+		if target ~= currentTarget then
+			currentTarget = target
+			selectionBox.Adornee = target
+		end
+	end
+end)
